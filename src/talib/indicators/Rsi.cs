@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace Talib.Indicators
 {
@@ -51,6 +53,16 @@ namespace Talib.Indicators
             }
             double rs = AverageGain(data, period) / averageLoss;
             return 100D - (100D / (1D + rs));
+        }
+
+        public static double?[] RSI(double[] data, int period)
+        {
+            List<double?> result = new List<double?>();
+            for (int i = 0; i < data.Length; i++)
+            {
+                result.Add(RsiSingle(data.Take(i+1).ToArray(),period));
+            }
+            return result.ToArray();
         }
     }
 }

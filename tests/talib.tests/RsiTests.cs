@@ -69,5 +69,15 @@ namespace Talib.Tests
             //Then
             Assert.Null(result);
         }
+
+        [Fact]
+        public void Rsi_Simplevalues_Calculated()
+        {
+            //When
+            var result = Rsi.RSI(ascending_data, period: 9);
+            double?[] expected = {null,null,null,null,null,null,null,null,null,100};
+            //Then
+            Assert.Equal(expected, result);
+        }
     }
 }
