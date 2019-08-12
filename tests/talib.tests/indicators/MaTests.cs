@@ -3,7 +3,7 @@ using System.Linq;
 using Talib.Indicators;
 using Xunit;
 
-namespace Talib.Tests {
+namespace Talib.Tests.Indicators {
     public class MaTests {
 
         private readonly double[] data = { 46.282, 45.614, 46.0328, 45.8931, 46.0826, 45.8433, 45.4245, 45.0955, 44.8264, 44.3278, 43.6124, 44.1497, 44.0902, 44.3389, 44.3189, 44.3289 };

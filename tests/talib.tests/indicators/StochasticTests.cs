@@ -3,7 +3,7 @@ using System.Linq;
 using Talib.Indicators;
 using Xunit;
 
-namespace Talib.Tests
+namespace Talib.Tests.Indicators
 {
     public class StochasticTests
     {
