@@ -22,7 +22,7 @@ namespace Talib.Indicators
             return sum / period;
         }
 
-        public double?[] Sma(double[] data, int period)
+        public double?[] SMA(double[] data, int period)
         {
             var result = new double?[data.Length];
             for (int i = 0; i < data.Length; i++)
@@ -56,7 +56,7 @@ namespace Talib.Indicators
             return EmaSingleInner(data);
         }
 
-        public double?[] Ema(double[] data, int period)
+        public double?[] EMA(double[] data, int period)
         {
             if (data == null || period <= 0)
             {
