@@ -39,7 +39,7 @@ namespace Talib.Indicators
                 return null;
             }
             double multiplier = 2D / (period + 1);
-            Array.Reverse(data);
+            var reversed_data = data.Reverse().ToArray();
             double? EmaSingleInner(double[] idata)
             {
                 if (period > idata.Length)
@@ -48,12 +48,12 @@ namespace Talib.Indicators
                 }
                 if (period == idata.Length)
                 {
-                    return SmaSingle(data, period);
+                    return SmaSingle(reversed_data, period);
                 }
                 double? last_ema = EmaSingleInner(idata.Skip(1).ToArray());
                 return last_ema + (multiplier * (idata.Take(1).Single() - last_ema));
             }
-            return EmaSingleInner(data);
+            return EmaSingleInner(reversed_data);
         }
 
         public double?[] EMA(double[] data, int period)
@@ -63,7 +63,7 @@ namespace Talib.Indicators
                 return null;
             }
             double multiplier = 2D / (period + 1);
-            Array.Reverse(data);
+            var reversed_data = data.Reverse().ToArray();
             List<double?> emaList = new List<double?>();
             Dictionary<double[], double?> memo = new Dictionary<double[], double?>();
             double? EmaInner(double[] idata, int offset)
@@ -74,10 +74,10 @@ namespace Talib.Indicators
                 }
                 if (period == idata.Length)
                 {
-                    memo[idata] = SmaSingle(data, period);
+                    memo[idata] = SmaSingle(reversed_data, period);
                     return memo[idata];
                 }
-                var subData = data.Skip(offset).ToArray();
+                var subData = reversed_data.Skip(offset).ToArray();
                 if (!memo.ContainsKey(subData))
                 {
                     memo[subData] = EmaInner(subData, offset + 1);
@@ -87,7 +87,7 @@ namespace Talib.Indicators
                 emaList.Add(last_ema);
                 return result;
             }
-            EmaInner(data, 0);
+            EmaInner(reversed_data, 0);
             return emaList.ToArray();
         }
     }
