@@ -9,7 +9,33 @@ namespace Talib.Tests.Indicators
     {
 
         [Fact]
-        public void K_SimpleValues_Calculated()
+        public void K_simplevalues_calculated()
+        {
+            //Given
+            double[] data = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
+
+            //When
+            double?[] result = Stochastic.K(data, period: 5);
+            double?[] expected = { null, null, null, null, 100, 100, 100, 100, 100, 100 };
+            //Then
+            Assert.Equal(expected, result);
+        }
+
+        [Fact]
+        public void D_simplevalues_calculated()
+        {
+            //Given
+            double[] data = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
+
+            //When
+            double?[] result = Stochastic.D(data, period: 5, k_period: 3);
+            double?[] expected = { null, null, null, null, 100, 100, 100, 100, 100, 100 };
+            //Then
+            Assert.Equal(expected, result);
+        }
+
+        [Fact]
+        public void K_Single_SimpleValues_Calculated()
         {
             //Given
             double[] data = { 1, 2, 3, 4, 5, 6, 5, 8, 4, 7 };
@@ -22,7 +48,7 @@ namespace Talib.Tests.Indicators
         }
 
         [Fact]
-        public void K_DataLengthLessThanPeriod_ReturnZero()
+        public void K_Single_DataLengthLessThanPeriod_ReturnZero()
         {
             //Given
             double[] data = { 1, 2, 3, 4, 5, 6, 5, 8, 4, 7 };
@@ -35,7 +61,7 @@ namespace Talib.Tests.Indicators
         }
 
         [Fact]
-        public void D_SimpleValues_Calculated()
+        public void D_Single_SimpleValues_Calculated()
         {
             //Given
             double[] data = { 1, 2, 3, 4, 5, 6, 5, 8, 4, 7 };
@@ -48,7 +74,7 @@ namespace Talib.Tests.Indicators
         }
 
         [Fact]
-        public void D_DataLengthLessThanPeriod_ReturnZero()
+        public void D_Single_DataLengthLessThanPeriod_ReturnZero()
         {
             //Given
             double[] data = { 1, 2, 3, 4, 5, 6, 5, 8, 4, 7 };
