@@ -66,7 +66,7 @@ namespace Talib.Indicators
             Array.Reverse(data);
             List<double?> emaList = new List<double?>();
             Dictionary<double[], double?> memo = new Dictionary<double[], double?>();
-            double? EmaInner(double[] idata)
+            double? EmaInner(double[] idata, int offset)
             {
                 if (period > idata.Length)
                 {
@@ -77,18 +77,17 @@ namespace Talib.Indicators
                     memo[idata] = SmaSingle(data, period);
                     return memo[idata];
                 }
-                var subData = idata.Skip(1).ToArray();
+                var subData = data.Skip(offset).ToArray();
                 if (!memo.ContainsKey(subData))
                 {
-                    memo[subData] = EmaInner(subData);
+                    memo[subData] = EmaInner(subData, offset + 1);
                 }
                 double? last_ema = memo[subData];
                 var result = last_ema + (multiplier * (idata.Take(1).Single() - last_ema));
                 emaList.Add(last_ema);
                 return result;
             }
-            EmaInner(data);
-            emaList.Reverse();
+            EmaInner(data, 0);
             return emaList.ToArray();
         }
     }
