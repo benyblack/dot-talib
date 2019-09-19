@@ -4,9 +4,19 @@ using System.Linq;
 
 namespace Talib.Indicators
 {
+
+    /// <summary>
+    /// Moving Average indicator [Wikipedia](https://en.wikipedia.org/wiki/Moving_average)
+    /// Calculate SMA and EMA
+    /// </summary>
     public class MA
     {
 
+        /// <summary>
+        /// Calculate Simple Moving Average
+        /// </summary>
+        /// <param name="data">List of prices, lates price is the first one in the list.</param>
+        /// <param name="period">MA period to be calculated. It must be equal or less than size of data.</param>
         public double? SmaSingle(double[] data, int period)
         {
             if (period > data.Length || period <= 0)
@@ -22,6 +32,11 @@ namespace Talib.Indicators
             return sum / period;
         }
 
+        /// <summary>
+        /// Calculate a list of SMA
+        /// </summary>
+        /// <param name="data">List of prices, lates price is the first one in the list.</param>
+        /// <param name="period">MA period to be calculated. It must be equal or less than size of data.</param>
         public double?[] SMA(double[] data, int period)
         {
             var result = new double?[data.Length];
@@ -32,6 +47,11 @@ namespace Talib.Indicators
             return result;
         }
 
+        /// <summary>
+        /// Calculate Exponential Moving Average
+        /// </summary>
+        /// <param name="data">List of prices, lates price is the first one in the list.</param>
+        /// <param name="period">MA period to be calculated. It must be equal or less than size of data.</param>
         public double? EmaSingle(double[] data, int period)
         {
             if (data == null || period <= 0)
@@ -56,6 +76,11 @@ namespace Talib.Indicators
             return EmaSingleInner(reversed_data);
         }
 
+        /// <summary>
+        /// Calculate a list of EMA
+        /// </summary>
+        /// <param name="data">List of prices, lates price is the first one in the list.</param>
+        /// <param name="period">MA period to be calculated. It must be equal or less than size of data.</param>
         public double?[] EMA(double[] data, int period)
         {
             if (data == null || period <= 0)
