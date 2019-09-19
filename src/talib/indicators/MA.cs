@@ -15,7 +15,7 @@ namespace Talib.Indicators
         /// <summary>
         /// Calculate Simple Moving Average
         /// </summary>
-        /// <param name="data">List of prices, lates price is the first one in the list.</param>
+        /// <param name="data">List of prices.</param>
         /// <param name="period">MA period to be calculated. It must be equal or less than size of data.</param>
         public double? SmaSingle(double[] data, int period)
         {
@@ -35,7 +35,7 @@ namespace Talib.Indicators
         /// <summary>
         /// Calculate a list of SMA
         /// </summary>
-        /// <param name="data">List of prices, lates price is the first one in the list.</param>
+        /// <param name="data">List of prices.</param>
         /// <param name="period">MA period to be calculated. It must be equal or less than size of data.</param>
         public double?[] SMA(double[] data, int period)
         {
@@ -50,7 +50,7 @@ namespace Talib.Indicators
         /// <summary>
         /// Calculate Exponential Moving Average
         /// </summary>
-        /// <param name="data">List of prices, lates price is the first one in the list.</param>
+        /// <param name="data">List of prices.</param>
         /// <param name="period">MA period to be calculated. It must be equal or less than size of data.</param>
         public double? EmaSingle(double[] data, int period)
         {
@@ -79,7 +79,7 @@ namespace Talib.Indicators
         /// <summary>
         /// Calculate a list of EMA
         /// </summary>
-        /// <param name="data">List of prices, lates price is the first one in the list.</param>
+        /// <param name="data">List of prices.</param>
         /// <param name="period">MA period to be calculated. It must be equal or less than size of data.</param>
         public double?[] EMA(double[] data, int period)
         {
