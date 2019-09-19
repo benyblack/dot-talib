@@ -4,16 +4,33 @@ using System;
 
 namespace Talib.Indicators
 {
+    
+    /// <summary>
+    /// MACD indicator [Wikipedia](https://en.wikipedia.org/wiki/MACD)
+    /// Calculate MACD, Signal line, and Histogram
+    /// </summary>
     public class Macd
     {
 
-
+        /// <summary>
+        /// Calculate a single MACD
+        /// </summary>
+        /// <param name="data">List of prices</param>
+        /// <param name="fast">Period of fast ema calculation</param>
+        /// <param name="slow">Period of slow ema calculation</param>
         public static double? MacdSingle(double[] data, int fast = 12, int slow = 26)
         {
             var ma = new MA();
             return ma.EmaSingle(data, fast) - ma.EmaSingle(data, slow);
         }
 
+        /// <summary>
+        /// Calculate a single Signal value
+        /// </summary>
+        /// <param name="data">List of prices</param>
+        /// <param name="period">Period of ema calculation on macd line</param>
+        /// <param name="macd_fast">Period of fast ema calculation</param>
+        /// <param name="macd_slow">Period of slow ema calculation</param>
         public static double? SignalSingle(double[] data, int period = 9, int macd_fast = 12, int macd_slow = 26)
         {
             var macd_list = new List<double>();
@@ -31,11 +48,27 @@ namespace Talib.Indicators
             return new MA().EmaSingle(macd_list.ToArray(), period);
         }
 
+        /// <summary>
+        /// Calculate a MACD Histogram value which is (MACD Line - Signal Line)
+        /// </summary>
+        /// <param name="data">List of prices</param>
+        /// <param name="signal_period">Period of ema calculation on macd line</param>
+        /// <param name="macd_fast">Period of fast ema calculation</param>
+        /// <param name="macd_slow">Period of slow ema calculation</param>
+        /// <returns></returns>
         public static double? HistogramSingle(double[] data, int signal_period = 9, int macd_fast = 12, int macd_slow = 26)
         {
             return MacdSingle(data, macd_fast, macd_slow) - SignalSingle(data, signal_period);
         }
 
+        /// <summary>
+        /// Calculate MACD
+        /// </summary>
+        /// <param name="data">List of prices</param>
+        /// <param name="signal_period">Period of ema calculation on macd line</param>
+        /// <param name="macd_fast">Period of fast ema calculation</param>
+        /// <param name="macd_slow">Period of slow ema calculation</param>
+        /// <return>A tuple contains macd, signal and histogram lines</return>
         public static (double?[] macd, double?[] signal, double?[] histogram) MACD(double[] data, int signal_period = 9, int macd_fast = 12, int macd_slow = 26)
         {
             var macd_list = new List<double?>();
