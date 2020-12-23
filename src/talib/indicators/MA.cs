@@ -9,10 +9,9 @@ namespace Talib.Indicators
     /// Moving Average indicator [Wikipedia](https://en.wikipedia.org/wiki/Moving_average)
     /// Calculate SMA and EMA
     /// </summary>
-    public class MA
+    public static class MA
     {
-
-        private bool ValidateData(double[] data, int period) =>
+        private static bool ValidateData(double[] data, int period) =>
             (data != null && data != Array.Empty<double>() && period <= data.Length && period > 0);
 
         /// <summary>
@@ -20,7 +19,7 @@ namespace Talib.Indicators
         /// </summary>
         /// <param name="data">List of prices.</param>
         /// <param name="period">MA period to be calculated. It must be equal or less than size of data.</param>
-        public double? SmaSingle(double[] data, int period)
+        public static double? SmaSingle(double[] data, int period)
         {
             if (!ValidateData(data, period)) return null;
 
@@ -33,12 +32,12 @@ namespace Talib.Indicators
         /// </summary>
         /// <param name="data">List of prices.</param>
         /// <param name="period">MA period to be calculated. It must be equal or less than size of data.</param>
-        public double?[] SMA(double[] data, int period)
+        public static double?[] SMA(double[] data, int period)
         {
             if (!ValidateData(data, period)) return null;
 
             var result = new double?[data.Length];
-            for (int i = period; i <= data.Length; i++)
+            for (var i = period; i <= data.Length; i++)
             {
                 result[i - 1] = SmaSingle(data.Take(i).ToArray(), period);
             }
@@ -50,7 +49,7 @@ namespace Talib.Indicators
         /// </summary>
         /// <param name="data">List of prices.</param>
         /// <param name="period">MA period to be calculated. It must be equal or less than size of data.</param>
-        public double? EmaSingle(double[] data, int period)
+        public static double? EmaSingle(double[] data, int period)
         {
             if (!ValidateData(data, period)) return null;
 
@@ -63,7 +62,7 @@ namespace Talib.Indicators
                 {
                     return SmaSingle(reversed_data, period);
                 }
-                double? last_ema = EmaSingleInner(innerData.Skip(1).ToArray());
+                var last_ema = EmaSingleInner(innerData.Skip(1).ToArray());
                 return last_ema + (multiplier * (innerData.Take(1).Single() - last_ema));
             }
 
@@ -75,7 +74,7 @@ namespace Talib.Indicators
         /// </summary>
         /// <param name="data">List of prices.</param>
         /// <param name="period">MA period to be calculated. It must be equal or less than size of data.</param>
-        public double?[] EMA(double[] data, int period)
+        public static double?[] EMA(double[] data, int period)
         {
             if (!ValidateData(data, period)) return null;
 
