@@ -1,8 +1,6 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
 using System.Linq;
-using System.Runtime.CompilerServices;
 
 namespace Talib.Indicators
 {
@@ -11,7 +9,6 @@ namespace Talib.Indicators
     /// Moving Average indicator [Wikipedia](https://en.wikipedia.org/wiki/Moving_average)
     /// Calculate SMA and EMA
     /// </summary>
-    [SuppressMessage("ReSharper", "RedundantAssignment")]
     public class MA
     {
 
