@@ -11,68 +11,67 @@ namespace Talib.Indicators
     /// </summary>
     public class Rsi
     {
+        private static bool ValidateData(double[] data, int period) =>
+            (data != null && data != Array.Empty<double>() && period < data.Length && period > 0);
 
         /// <summary>
-        /// Avererage gain during the period
+        /// Average gain during the period
         /// </summary>
         /// <param name="data">List of prices</param>
-        /// <param name="period">Period of calculation</param>
+        /// <param name="period">Period of calculation, must be less than length of price list</param>
         public static double AverageGain(double[] data, int period)
         {
-            if (period >= data.Length)
-            {
-                return 0;
-            }
+            if (!ValidateData(data, period)) return 0;
+
             double gains = 0;
-            for (int i = data.Length - period - 1; i < period; i++)
+            var startIndex = data.Length - period + 1;
+            for (int i = startIndex; i < data.Length; i++)
             {
-                if (data[i + 1] > data[i])
+                if (data[i] > data[i - 1])
                 {
-                    gains += data[i + 1] - data[i];
+                    gains += data[i] - data[i - 1];
                 }
             }
-            return gains / period;
+            return gains / (period - 1);
         }
 
         /// <summary>
-        /// Avererage loss during the period
+        /// Average loss during the period
         /// </summary>
         /// <param name="data">List of prices</param>
-        /// <param name="period">Period of calculation</param>
+        /// <param name="period">Period of calculation, must be less than length of price list</param>
         public static double AverageLoss(double[] data, int period)
         {
-            if (period >= data.Length)
-            {
-                return 0;
-            }
+            if (!ValidateData(data, period)) return 0;
+
             double losses = 0;
-            for (int i = data.Length - period - 1; i < period; i++)
+            var startIndex = data.Length - period + 1;
+            for (int i = startIndex; i < data.Length; i++)
             {
-                if (data[i + 1] < data[i])
+                if (data[i] < data[i - 1])
                 {
-                    losses += data[i] - data[i + 1];
+                    losses += data[i - 1] - data[i];
                 }
             }
-            return losses / period;
+            return losses / (period - 1);
         }
+
 
         /// <summary>
         /// Calculate a single RSI value
         /// </summary>
         /// <param name="data">List of prices</param>
-        /// <param name="period">Period of calculation</param>
+        /// <param name="period">Period of calculation, must be less than length of price list</param>
         public static double? RsiSingle(double[] data, int period)
         {
-            if (period >= data.Length)
-            {
-                return null;
-            }
-            double averageLoss = AverageLoss(data, period);
-            if (averageLoss == 0)
+            if (!ValidateData(data, period)) return null;
+
+            var averageLoss = AverageLoss(data, period);
+            if (averageLoss == 0D)
             {
                 return 100;
             }
-            double rs = AverageGain(data, period) / averageLoss;
+            var rs = AverageGain(data, period) / averageLoss;
             return 100D - (100D / (1D + rs));
         }
 
@@ -83,12 +82,7 @@ namespace Talib.Indicators
         /// <param name="period">Period of calculation</param>
         public static double?[] RSI(double[] data, int period)
         {
-            List<double?> result = new List<double?>();
-            for (int i = 0; i < data.Length; i++)
-            {
-                result.Add(RsiSingle(data.Take(i+1).ToArray(),period));
-            }
-            return result.ToArray();
+            return data.Select((t, i) => RsiSingle(data.Take(i + 1).ToArray(), period)).ToArray();
         }
     }
 }

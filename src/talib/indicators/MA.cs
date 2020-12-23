@@ -12,6 +12,9 @@ namespace Talib.Indicators
     public class MA
     {
 
+        private bool ValidateData(double[] data, int period) =>
+            (data != null && data != Array.Empty<double>() && period <= data.Length && period > 0);
+
         /// <summary>
         /// Calculate Simple Moving Average
         /// </summary>
@@ -19,16 +22,9 @@ namespace Talib.Indicators
         /// <param name="period">MA period to be calculated. It must be equal or less than size of data.</param>
         public double? SmaSingle(double[] data, int period)
         {
-            if (period > data.Length || period <= 0)
-            {
-                return null;
-            }
+            if (!ValidateData(data, period)) return null;
 
-            double sum = 0;
-            for (int i = data.Length - 1; i >= data.Length - period; i--)
-            {
-                sum += data[i];
-            }
+            var sum = data.Skip(data.Length - period).Sum();
             return sum / period;
         }
 
@@ -39,10 +35,12 @@ namespace Talib.Indicators
         /// <param name="period">MA period to be calculated. It must be equal or less than size of data.</param>
         public double?[] SMA(double[] data, int period)
         {
+            if (!ValidateData(data, period)) return null;
+
             var result = new double?[data.Length];
-            for (int i = 0; i < data.Length; i++)
+            for (int i = period; i <= data.Length; i++)
             {
-                result[i] = SmaSingle(data.Take(i + 1).ToArray(), period);
+                result[i - 1] = SmaSingle(data.Take(i).ToArray(), period);
             }
             return result;
         }
@@ -54,25 +52,21 @@ namespace Talib.Indicators
         /// <param name="period">MA period to be calculated. It must be equal or less than size of data.</param>
         public double? EmaSingle(double[] data, int period)
         {
-            if (data == null || period <= 0)
-            {
-                return null;
-            }
-            double multiplier = 2D / (period + 1);
+            if (!ValidateData(data, period)) return null;
+
+            var multiplier = 2D / (period + 1);
             var reversed_data = data.Reverse().ToArray();
-            double? EmaSingleInner(double[] idata)
+
+            double? EmaSingleInner(double[] innerData)
             {
-                if (period > idata.Length)
-                {
-                    return null;
-                }
-                if (period == idata.Length)
+                if (period == innerData.Length)
                 {
                     return SmaSingle(reversed_data, period);
                 }
-                double? last_ema = EmaSingleInner(idata.Skip(1).ToArray());
-                return last_ema + (multiplier * (idata.Take(1).Single() - last_ema));
+                double? last_ema = EmaSingleInner(innerData.Skip(1).ToArray());
+                return last_ema + (multiplier * (innerData.Take(1).Single() - last_ema));
             }
+
             return EmaSingleInner(reversed_data);
         }
 
@@ -83,35 +77,31 @@ namespace Talib.Indicators
         /// <param name="period">MA period to be calculated. It must be equal or less than size of data.</param>
         public double?[] EMA(double[] data, int period)
         {
-            if (data == null || period <= 0)
-            {
-                return null;
-            }
-            double multiplier = 2D / (period + 1);
+            if (!ValidateData(data, period)) return null;
+
+            var multiplier = 2D / (period + 1);
             var reversed_data = data.Reverse().ToArray();
-            List<double?> emaList = new List<double?>();
-            Dictionary<double[], double?> memo = new Dictionary<double[], double?>();
-            double? EmaInner(double[] idata, int offset)
+            var emaList = new List<double?>();
+            var memo = new Dictionary<double[], double?>();
+
+            double? EmaInner(double[] innerData, int offset)
             {
-                if (period > idata.Length)
+                if (period == innerData.Length)
                 {
-                    return null;
-                }
-                if (period == idata.Length)
-                {
-                    memo[idata] = SmaSingle(reversed_data, period);
-                    return memo[idata];
+                    memo[innerData] = SmaSingle(reversed_data, period);
+                    return memo[innerData];
                 }
                 var subData = reversed_data.Skip(offset).ToArray();
                 if (!memo.ContainsKey(subData))
                 {
                     memo[subData] = EmaInner(subData, offset + 1);
                 }
-                double? last_ema = memo[subData];
-                var result = last_ema + (multiplier * (idata.Take(1).Single() - last_ema));
+                var last_ema = memo[subData];
+                var result = last_ema + (multiplier * (innerData.Take(1).Single() - last_ema));
                 emaList.Add(last_ema);
                 return result;
             }
+
             EmaInner(reversed_data, 0);
             return emaList.ToArray();
         }
