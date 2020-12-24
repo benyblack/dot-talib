@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -12,8 +13,37 @@ namespace Talib.Indicators
     /// - Highest High = highest high for the look-back period
     /// - %K is multiplied by 100 to move the decimal point two places
     /// </summary>
-    public class Stochastic
+    public static class Stochastic
     {
+        private static bool ValidateData(double[] data, int period) =>
+            (data != null && data != Array.Empty<double>() && period <= data.Length && period > 0);
+
+        /// <summary>
+        /// Price list accumulator class
+        /// </summary>
+        public class ListStatistics
+        {
+            public double Min { get; set; }
+            public double Max { get; set; }
+
+            public ListStatistics()
+            {
+                Min = double.MaxValue;
+                Max = double.MinValue;
+            }
+
+            public ListStatistics Accumulate(double price)
+            {
+                Min = Math.Min(Min, price);
+                Max = Math.Max(Max, price);
+                return this;
+            }
+
+            public ListStatistics Compute()
+            {
+                return this;
+            }
+        }
 
         /// <summary>
         /// Calculate a single value of %K line
@@ -22,15 +52,14 @@ namespace Talib.Indicators
         /// <param name="period">Period of calculation</param>
         public static double K_Single(double[] data, int period)
         {
-            if (data.Length < period)
-            {
-                return 0;
-            }
-            var price = data.Last();
-            var selected_data = data.Skip(data.Length - period).ToArray();
-            var lowest_low = selected_data.Min();
-            var highest_high = selected_data.Max();
-            return (price - lowest_low) / (highest_high - lowest_low) * 100D;
+            if (!ValidateData(data, period)) return 0;
+
+            var lastPrice = data.Last();
+            var selectedData = data.Skip(data.Length - period).ToArray();
+            var listStatistics = selectedData.Aggregate(new ListStatistics(), (acc, p) => acc.Accumulate(p), acc => acc.Compute());
+            var lowestLow = listStatistics.Min;
+            var highestHigh = listStatistics.Max;
+            return (lastPrice - lowestLow) / (highestHigh - lowestLow) * 100D;
         }
 
         /// <summary>
@@ -40,21 +69,18 @@ namespace Talib.Indicators
         /// <param name="period">Period of calculation</param>
         public static double?[] K(double[] data, int period)
         {
-            var k_list = new List<double?>();
-            for (int i = 0; i < data.Length; i++)
+            var kList = new List<double?>();
+
+            for (var i = 0; i < data.Length; i++)
             {
-                if (period + i > data.Length)
-                {
-                    k_list.Add(null);
-                }
-                else
-                {
-                    var selected_data = data.Skip(data.Length - (period + i)).Take(period).ToArray();
-                    k_list.Add(K_Single(selected_data, period));
-                }
+                kList.Add(null);
+                if (period + i > data.Length) continue;
+
+                var selectedData = data.SelectList(i, period);
+                kList[i] = K_Single(selectedData, period);
             }
-            k_list.Reverse();
-            return k_list.ToArray();
+            kList.Reverse();
+            return kList.ToArray();
         }
 
         /// <summary>
@@ -62,24 +88,20 @@ namespace Talib.Indicators
         /// </summary>
         /// <param name="data">List of prices</param>
         /// <param name="period">Period of calculation</param>
-        /// <param name="k_period">Period of calculation for %K</param>
-        public static double?[] D(double[] data, int period, int k_period)
+        /// <param name="kPeriod">Period of calculation for %K</param>
+        public static double?[] D(double[] data, int period, int kPeriod)
         {
-            var d_list = new List<double?>();
-            for (int i = 0; i < data.Length; i++)
+            var dList = new List<double?>();
+            for (var i = 0; i < data.Length; i++)
             {
-                if (period + i > data.Length)
-                {
-                    d_list.Add(null);
-                }
-                else
-                {
-                    var selected_data = data.Skip(data.Length - (period + i)).Take(period).ToArray();
-                    d_list.Add(D_Single(selected_data, period, k_period));
-                }
+                dList.Add(null);
+                if (period + i > data.Length) continue;
+
+                var selectedData = data.SelectList(i, period);
+                dList[i] = D_Single(selectedData, period, kPeriod);
             }
-            d_list.Reverse();
-            return d_list.ToArray();
+            dList.Reverse();
+            return dList.ToArray();
         }
 
         /// <summary>
@@ -87,21 +109,23 @@ namespace Talib.Indicators
         /// </summary>
         /// <param name="data">List of prices</param>
         /// <param name="period">Period of calculation</param>
-        /// <param name="k_period">Period of calculation for %K</param>
-        public static double? D_Single(double[] data, int period, int k_period = 3)
+        /// <param name="kPeriod">Period of calculation for %K</param>
+        public static double? D_Single(double[] data, int period, int kPeriod = 3)
         {
-            if (data.Length < period)
+            if (!ValidateData(data, period)) return 0;
+
+            var kList = new List<double>();
+            for (var i = 0; i < period; i++)
             {
-                return 0;
+                var selectedData = data.SelectList(i,period);
+                kList.Add(K_Single(selectedData, period));
             }
-            var k_list = new List<double>();
-            for (int i = 0; i < period; i++)
-            {
-                var selected_data = data.Skip(data.Length - (period + i)).Take(period).ToArray();
-                k_list.Add(K_Single(selected_data, period));
-            }
-            var ma = new MA();
-            return ma.SmaSingle(k_list.ToArray(), k_period);
+            return MA.SmaSingle(kList.ToArray(), kPeriod);
+        }
+
+        public static double[] SelectList(this double[] data,int index,int period)
+        {
+            return data.Skip(data.Length - (period + index)).Take(period).ToArray();
         }
     }
 }
