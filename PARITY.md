@@ -23,7 +23,7 @@ noted.
   machinery is not emulated); where TA-Lib's unified outputs begin
   later, ours define values earlier — same values on the shared bars.
 
-## Overlap studies — 15 of 16 (all but `HT_TRENDLINE`)
+## Overlap studies — 16 of 16 (complete)
 
 | TA-Lib | Talib | Status |
 |---|---|---|
@@ -42,7 +42,7 @@ noted.
 | BBANDS | `Bbands.Latest` / `BbandsSeries` | ✓ (middle bit-exact, bands 1.3e-13) |
 | SAR | `Sar.Latest` / `SarSeries` | ✓ (bit-exact) |
 | SAR-ext | `Sar.SarExt` / `SarExtSeries` | ✓ (alias of the base series) |
-| HT_TRENDLINE | — | with the Hilbert family |
+| HT_TRENDLINE | `Ht.TrendlineSeries` | ✓ (bit-exact) |
 
 ## Momentum indicators — 31 of 31 (complete)
 
@@ -116,10 +116,24 @@ noted.
 | TYPPRICE | `PriceTransform.TypPrice` | ✓ (bit-exact) |
 | WCLPRICE | `PriceTransform.WclPrice` | ✓ (bit-exact) |
 
-## Remaining
+## Cycle indicators — 6 of 6 (complete)
 
-Cycles (the Hilbert transform family + MAMA/FAMA) and all 61
-candlestick patterns.
+| TA-Lib | Talib | Status |
+|---|---|---|
+| HT_DCPERIOD | `Ht.DcPeriodSeries` | ✓ (6.8e-16) |
+| HT_DCPHASE | `Ht.DcPhaseSeries` | ✓ (1.3e-13) |
+| HT_PHASOR | `Ht.PhasorSeries` | ✓ (inphase 6.4e-16, quadrature 1.3e-12) |
+| HT_SINE | `Ht.SineSeries` | ✓ (sine 1.3e-13, lead 9.4e-15) |
+| HT_TRENDMODE | `Ht.TrendModeSeries` | ✓ (bit-exact) |
+| MAMA (+ FAMA) | `Mama.MamaSeries` | ✓ (both ~6e-16) |
+
+## Pattern recognition — 61 of 61 (complete)
+
+All 61 CDL patterns via `Cdl` — scored per bar (+100 / -100 / 0, with
+TA-Lib's ±200 hikkake confirmations and ±80 equal-touch levels),
+callable individually or in one pass over a shared context with
+`Cdl.Scan`. Every pattern is integer-exact against the C library on the
+audit's pseudo-random candle fixture.
 
 ## Beyond the TA-Lib list
 
@@ -155,6 +169,5 @@ Four families follow the TA-Lib C library where the Elixir reference
 All four are bit-exact or near-exact here; the Elixir library is worth
 the same upstream fixes.
 
-**Summary: 64 of 133 functions** (+ Keltner and rolling VWAP beyond the
-list). Remaining: the Hilbert/MAMA cycle family and the 61 candlestick
-patterns.
+**Summary: 133 of 133 functions — full TA-Lib parity.** (+ Keltner and
+rolling VWAP beyond the list.)
