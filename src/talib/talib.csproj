@@ -3,7 +3,7 @@
   <PropertyGroup>
     <RootNamespace>Talib</RootNamespace>
     <PackageId>Talib</PackageId>
-    <Version>0.3.0</Version>
+    <Version>0.4.0</Version>
     <Authors>Behnam Shomali</Authors>
     <Description>Technical analysis indicators with TA-Lib-compatible values: moving averages, RSI, MACD, Stochastic, ATR, Bollinger Bands, Donchian channels and more — batch, scalar and O(1) streaming APIs.</Description>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>

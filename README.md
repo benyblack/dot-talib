@@ -6,21 +6,28 @@ This is a revival of a 2019-era sketch, rebuilt on the conventions proven
 by the [Elixir sister library](https://github.com/benyblack/talib) — whose
 algorithms were verified value-by-value against the real TA-Lib C
 library — and this port re-runs that audit against the C library
-directly (see [Audit](#audit)). 40 of the 133 TA-Lib functions are
-covered so far, plus Keltner channels (beyond the TA-Lib list); see
-[PARITY.md](PARITY.md) for the function-by-function map and the roadmap.
+directly (see [Audit](#audit)). 64 of the 133 TA-Lib functions are
+covered — the momentum, volatility, volume, statistic and price-transform
+groups are complete — plus Keltner channels and rolling VWAP (beyond the
+TA-Lib list); see [PARITY.md](PARITY.md) for the function-by-function map
+and the roadmap.
 
 ## Indicators
 
 - Overlap studies: SMA, EMA (SMA-seeded), WMA, Wilder RMA, DEMA, TEMA,
-  Midpoint, Bollinger Bands, Donchian channels (+ Midprice), Parabolic
-  SAR (+ extended), Keltner channels
-- Momentum: RSI (Wilder), MACD (line/signal/histogram, `MacdFix`),
-  Stochastic (fast and slow), Williams %R, ROC/ROCP/ROCR/ROCR100,
-  Momentum, CMO (Wilder), APO, PPO, Aroon (+ oscillator), StochRSI,
-  TRIX, ADX/DMI (+DI, -DI, DX, ADXR, raw DM)
-- Volatility: population StdDev, ATR (+ NATR, True Range)
-- Volume: OBV
+  TRIMA, KAMA, T3, Midpoint, Bollinger Bands, Donchian channels
+  (+ Midprice), Parabolic SAR (+ extended), Keltner channels, the
+  generic `MovingAverage` dispatcher and variable-period MAVP
+- Momentum: RSI (Wilder), MACD (line/signal/histogram, `MacdFix`,
+  `MacdExt`), Stochastic (fast and slow), Williams %R,
+  ROC/ROCP/ROCR/ROCR100, Momentum, CMO (Wilder), APO, PPO, Aroon
+  (+ oscillator), StochRSI, TRIX, ADX/DMI (+DI, -DI, DX, ADXR, raw DM),
+  BOP, CCI, Ultimate Oscillator
+- Volatility: population StdDev, Variance, ATR (+ NATR, True Range)
+- Volume: OBV, MFI, Chaikin A/D line and oscillator, rolling VWAP
+- Statistics: linear regression (value/slope/intercept/angle), time
+  series forecast, Beta (returns-based), Correlation
+- Price transform: average, median, typical, weighted close
 
 Each family comes as a batch scalar (`Latest` — the value at the newest
 point), a batch series (`...Series` — aligned with the input,
@@ -111,20 +118,21 @@ python bench/compare_audit.py tmp
 Verified against TA-Lib 0.8.2: **bit-exact** for SMA, EMA, DEMA, TEMA,
 the MACD line, BBands middle, fast %K, slow %K/%D, Williams %R,
 Midpoint, OBV, both Donchian channels, CMO, APO, PPO, TRIX, SAR,
-Keltner middle and the ADX family's latest values; **max relative error
-from 1.5e-14 (WMA) to 4.3e-12 (StdDev)** — the same figure the Elixir
-library records — for the rest. The streaming rows match with the same
-figures as their batch twins. The MACD line and stochastic rows differ
-only in leading alignment: this library defines outputs from the bar
-where the math starts, so some rows begin earlier than TA-Lib's unified
-outputs; on the shared bars the values agree exactly.
+Keltner middle, the ADX family's latest values, BOP, AD, the median /
+typical / weighted-close price transforms and Beta; **max relative
+error from 1.5e-14 (WMA) to 4.3e-12 (StdDev/CCI)** for the rest. The
+streaming rows match with the same figures as their batch twins. The
+MACD line and stochastic rows differ only in leading alignment: this
+library defines outputs from the bar where the math starts, so some
+rows begin earlier than TA-Lib's unified outputs; on the shared bars
+the values agree exactly.
 
-The audit also catches inherited divergences: 0.3.0's extension exposed
-that the Elixir reference's CMO (textbook sums instead of Wilder
-smoothing) and SAR (close-seeded trend, no first-bar consumption)
-differ from the C library — both were rewritten here from the C source
-and are bit-exact (see PARITY.md, "Divergences from the Elixir
-reference").
+The audit also catches inherited divergences from the Elixir reference
+(whose audit never dumped these functions): CMO and SAR in 0.3.0, and
+Beta (TA-Lib regresses returns, not prices) and the Chaikin oscillator
+(EMA over the cumulative A/D line, not the flows) in 0.4.0 — all four
+rewritten here from the C source and verified (see PARITY.md,
+"Divergences from the Elixir reference").
 
 ## Benchmarks
 
@@ -147,12 +155,11 @@ arrays (plus per-window records for the multi-output families).
 
 ## Roadmap
 
-Follow the Elixir library toward full TA-Lib parity, in rough order:
-TRIMA/KAMA/T3 (+ MACDEXT, MAVP), statistics and linear regression,
-VWAP/MFI/Chaikin, BOP/CCI/Ultimate Oscillator, price transforms, the
-Hilbert-transform family, and the 61 candlestick patterns. The Elixir
-library's CMO and SAR also deserve the upstream fix this library
-already applied (see PARITY.md). Contributions welcome.
+The Hilbert-transform cycle family (plus MAMA/FAMA) and the 61
+candlestick patterns are all that remain toward full TA-Lib parity.
+The Elixir library also deserves the four upstream fixes this library
+already applied — CMO, SAR, Beta and the Chaikin oscillator (see
+PARITY.md). Contributions welcome.
 
 ## License
 

@@ -198,6 +198,136 @@ public class MaTests
     Assert.Throws<ArgumentException>(() => Ma.RmaInit(new[] { 1.0, 2 }, 3));
   }
 
+  [Fact]
+  public void Overlap_additions_trima_kama_t3()
+  {
+    Assert.Equal(1300.0545, Round(Ma.Trima(Prices, 14), 4));
+    Assert.Equal(1313.4113, Round(Ma.Kama(Prices, 14), 4));
+    Assert.Equal(1279.787, Round(Ma.T3(Prices, 14), 4));
+
+    Assert.Equal(Prices.Length, Ma.TrimaSeries(Prices, 14).Length);
+    Assert.Equal(13, Ma.TrimaSeries(Prices, 14).Count(v => v is null));
+    // KAMA lags one bar further: the efficiency ratio needs period
+    // one-day changes to its left.
+    Assert.Equal(14, Ma.KamaSeries(Prices, 14).Count(v => v is null));
+    Assert.Equal(6 * (14 - 1), Ma.T3Series(Prices, 14).Count(v => v is null));
+  }
+
+  [Fact]
+  public void Trima_matches_the_doctest_walk()
+  {
+    double[] walk = { 1, 2, 3, 4, 5, 6, 7 };
+    Assert.Equal(5.0, Round(Ma.Trima(walk, 5), 4));
+
+    double?[] expected = { null, null, null, null, 3.0, 4.0, 5.0 };
+    Assert.Equal(expected, Round(Ma.TrimaSeries(walk, 5), 4));
+  }
+
+  [Fact]
+  public void Kama_matches_the_doctest_walk()
+  {
+    double[] walk = { 1, 2, 3, 4, 5, 6, 7, 8 };
+    Assert.Equal(6.7868, Round(Ma.Kama(walk, 2), 4));
+
+    double?[] expected = { null, null, 2.4444, 3.1358, 3.9643, 4.8691, 5.8162, 6.7868 };
+    Assert.Equal(expected, Round(Ma.KamaSeries(walk, 2), 4));
+
+    // At period 1 the series is the input itself.
+    Assert.Equal(new double?[] { 1.0, 2.0, 3.0 }, Ma.KamaSeries(new[] { 1.0, 2.0, 3.0 }, 1));
+  }
+
+  [Fact]
+  public void T3_matches_the_doctest_walk()
+  {
+    double[] walk = Enumerable.Range(1, 14).Select(i => (double)i).ToArray();
+    Assert.Equal(13.55, Round(Ma.T3(walk, 2), 4));
+    Assert.Equal(6, Ma.T3Series(walk, 2).Count(v => v is null));
+  }
+
+  [Fact]
+  public void New_averages_return_nulls_without_enough_data()
+  {
+    Assert.Null(Ma.Trima(Prices[..13], 14));
+    Assert.Null(Ma.Kama(Prices[..14], 14));
+    Assert.Null(Ma.T3(Prices[..78], 14));
+
+    Assert.All(Ma.TrimaSeries(Prices[..13], 14), v => Assert.Null(v));
+    Assert.All(Ma.KamaSeries(Prices[..14], 14), v => Assert.Null(v));
+    Assert.All(Ma.T3Series(Prices[..78], 14), v => Assert.Null(v));
+
+    Assert.Equal(Ma.Trima(Prices, 14)!.Value, Ma.TrimaSeries(Prices, 14)[^1]!.Value);
+    Assert.Equal(Ma.Kama(Prices, 14)!.Value, Ma.KamaSeries(Prices, 14)[^1]!.Value);
+    Assert.Equal(Ma.T3(Prices, 14)!.Value, Ma.T3Series(Prices, 14)[^1]!.Value);
+  }
+
+  [Fact]
+  public void New_averages_reject_invalid_periods()
+  {
+    Assert.Throws<ArgumentOutOfRangeException>(() => Ma.Trima(Prices, 0));
+    Assert.Throws<ArgumentOutOfRangeException>(() => Ma.TrimaSeries(Prices, 0));
+    Assert.Throws<ArgumentOutOfRangeException>(() => Ma.Kama(Prices, -1));
+    Assert.Throws<ArgumentOutOfRangeException>(() => Ma.KamaSeries(Prices, -1));
+    Assert.Throws<ArgumentOutOfRangeException>(() => Ma.T3(Prices, 0));
+    Assert.Throws<ArgumentOutOfRangeException>(() => Ma.T3Series(Prices, 0));
+  }
+
+  [Fact]
+  public void MovingAverage_dispatches_to_the_named_average()
+  {
+    Assert.Equal(Ma.Sma(Series, 3), Ma.MovingAverage(Series, 3, MaType.Sma));
+    Assert.Equal(Ma.Ema(Series, 3), Ma.MovingAverage(Series, 3, MaType.Ema));
+    Assert.Equal(Ma.Wma(Series, 3), Ma.MovingAverage(Series, 3, MaType.Wma));
+    Assert.Equal(Ma.Dema(Prices, 14), Ma.MovingAverage(Prices, 14, MaType.Dema));
+    Assert.Equal(Ma.Tema(Prices, 14), Ma.MovingAverage(Prices, 14, MaType.Tema));
+    Assert.Equal(Ma.Trima(Prices, 14), Ma.MovingAverage(Prices, 14, MaType.Trima));
+    Assert.Equal(Ma.Kama(Prices, 14), Ma.MovingAverage(Prices, 14, MaType.Kama));
+    Assert.Equal(Ma.T3(Prices, 14), Ma.MovingAverage(Prices, 14, MaType.T3));
+
+    Assert.Equal(6.5, Round(Ma.MovingAverage(new[] { 1.0, 2, 3, 4, 5, 6, 7, 8 }, 4, MaType.Ema), 4));
+    Assert.Null(Ma.MovingAverage(Series, 50, MaType.Sma));
+
+    Assert.Throws<ArgumentOutOfRangeException>(() => Ma.MovingAverage(Series, 3, (MaType)99));
+    Assert.Throws<ArgumentOutOfRangeException>(() => Ma.MovingAverage(Series, 0, MaType.Sma));
+  }
+
+  [Fact]
+  public void Mavp_uses_the_period_given_for_each_point()
+  {
+    Assert.Equal(5.5, Ma.Mavp(new[] { 1.0, 2, 3, 4, 5, 6 }, new[] { 2.0, 2, 2, 2, 2, 2 })[^1]);
+
+    double?[] firstThree = Ma.Mavp(new[] { 1.0, 2, 3, 4, 5, 6 }, new[] { 1.0, 2, 3, 4, 5, 6 });
+    Assert.Equal(new double?[] { null, 1.5, 2.0 }, firstThree[..3]);
+
+    // EMA type: each point is the EMA of the prefix ending there.
+    Assert.Equal(
+        Ma.Ema(new[] { 1.0, 2, 3, 4, 5, 6 }, 2),
+        Ma.Mavp(new[] { 1.0, 2, 3, 4, 5, 6 }, new[] { 2.0, 2, 2, 2, 2, 2 }, 2, 30, MaType.Ema)[^1]);
+  }
+
+  [Fact]
+  public void Mavp_clamps_and_truncates_the_periods()
+  {
+    double?[] clamped = Ma.Mavp(new[] { 1.0, 2, 3, 4, 5, 6 }, new[] { 0.0, 100, 2.7, 2, 2, 2 });
+    Assert.Equal(new double?[] { null, null, 2.5, 3.5, 4.5, 5.5 }, clamped);
+  }
+
+  [Fact]
+  public void Mavp_zips_prices_and_periods_and_validates()
+  {
+    // Only min(prices, periods) points are produced.
+    Assert.Equal(2, Ma.Mavp(new[] { 1.0, 2, 3 }, new[] { 3.0, 3 }).Length);
+
+    // The type check happens per point, so pre-window points stay null.
+    Assert.Equal(new double?[] { null }, Ma.Mavp(new[] { 1.0 }, new[] { 1.0 }, 2, 30, (MaType)99));
+
+    Assert.Throws<ArgumentOutOfRangeException>(() =>
+        Ma.Mavp(new[] { 1.0, 2, 3 }, new[] { 2.0, 2, 2 }, 2, 30, (MaType)99));
+    Assert.Throws<ArgumentOutOfRangeException>(() =>
+        Ma.Mavp(new[] { 1.0, 2, 3 }, new[] { 2.0, 2, 2 }, 0, 30));
+    Assert.Throws<ArgumentOutOfRangeException>(() =>
+        Ma.Mavp(new[] { 1.0, 2, 3 }, new[] { 2.0, 2, 2 }, 2, 0));
+  }
+
   private static double? Round(double? value, int digits) =>
       value is null ? null : Math.Round(value.Value, digits, MidpointRounding.AwayFromZero);
 

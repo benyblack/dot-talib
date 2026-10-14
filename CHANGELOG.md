@@ -6,6 +6,46 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-14
+
+The statistics-volume release: the moving-average family completed,
+momentum, volume, statistics and price-transform groups at full TA-Lib
+coverage — and the audit caught two more inherited divergences.
+
+### Added
+
+- Ma completion: TRIMA, KAMA, T3 (the reference's fixed smoothing
+  constants, flat-window reset and coefficient order preserved), the
+  generic `MovingAverage` dispatcher with a `MaType` enum, and MAVP.
+- `Macd.MacdExt` (any MA type for the three legs; unlocks with the new
+  averages).
+- `Stats` (scalar-only, like the reference): Variance, the linear
+  regression family (value/slope/intercept/angle), TSF, Beta,
+  Correlation.
+- `PriceTransform`: average, median, typical and weighted-close prices.
+- Volume and momentum: rolling VWAP (beyond the TA-Lib list), MFI,
+  Chaikin A/D line and oscillator, BOP, CCI, Ultimate Oscillator.
+- 59 new tests (248 total); the audit gains 24 rows — everything now
+  dumped passes against the C library: bit-exact for BOP, AD,
+  MEDPRICE/TYPPRICE/WCLPRICE and Beta; 1.6e-16 (KAMA) to 4.3e-12 (CCI,
+  StdDev) elsewhere; MACDEXT ~1e-12 on WMA legs; the stats last values
+  ~1e-14.
+
+### Changed
+
+- **Beta now follows the TA-Lib C library** (`ta_BETA.c`, ported
+  operation for operation): the regression runs over per-bar returns
+  with shift-anchored sliding sums and reseed triggers. The Elixir
+  reference regresses raw prices — a different quantity (fixture golden
+  0.6104 → 1.0037; degenerate windows read 0, the C library's defined
+  value). The Elixir library is worth the same upstream fix.
+- **The Chaikin oscillator now takes EMA(3) − EMA(10) over the
+  cumulative A/D line** (the TA-Lib convention); the Elixir reference
+  oscillates the per-bar flows (fixture golden 76.0517 → 56.9191).
+- The compare script gained an absolute-error floor, so a 0 vs 5e-14
+  value (float dust at an MFI turning point) no longer reads as a 100%
+  error.
+
 ## [0.3.0] - 2026-10-14
 
 The core-momentum release: nine more families, and the value audit —

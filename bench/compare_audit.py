@@ -74,6 +74,8 @@ def compare(name, ours, theirs):
     nan_mismatch = 0
     compared = 0
     max_rel = 0.0
+    max_abs = 0.0
+    scale = 1.0
     exact = True
     for o, t in zip(ours[start:], theirs[start:]):
         o_nan = o is None or math.isnan(o)
@@ -85,11 +87,18 @@ def compare(name, ours, theirs):
         compared += 1
         if o != t:
             exact = False
+        max_abs = max(max_abs, abs(o - t))
+        scale = max(scale, abs(o), abs(t))
         rel = abs(o - t) / abs(t) if t != 0 else abs(o - t)
         max_rel = max(max_rel, rel)
 
     if nan_mismatch:
         note = (note + "; " if note else "") + f"{nan_mismatch} nan-position mismatches in the overlap"
+    # Near-zero denominators explode the relative metric (a value of 0 vs
+    # 5e-14 is a rounding difference, not a 100% error); an absolute
+    # error within 1e-9 of the row's scale passes regardless.
+    if max_abs <= 1e-9 * scale:
+        max_rel = min(max_rel, 1e-11)
     return name, compared, max_rel, exact, note
 
 
@@ -175,6 +184,33 @@ def main():
         "adxr_last": talib.ADXR(high, low, close, 14)[-1:],
         "stream_aroon_up": talib.AROON(p, p, timeperiod=14)[1],
         "stream_aroon_down": talib.AROON(p, p, timeperiod=14)[0],
+        # 0.4.0 families. Rolling VWAP has no TA-Lib counterpart (beyond
+        # the list, like Keltner); the stats two-series functions run over
+        # (prices, opens); MACDEXT uses WMA (matype 2) for all three legs.
+        "trima": talib.TRIMA(prices, 20),
+        "kama": talib.KAMA(prices, 20),
+        "t3": talib.T3(prices, 5, 0.7),
+        "mfi": talib.MFI(high, low, close, volume, 14),
+        "ad": talib.AD(high, low, close, volume),
+        "adosc_last": talib.ADOSC(high, low, close, volume, 3, 10)[-1:],
+        "bop": talib.BOP(open_, high, low, close),
+        "cci": talib.CCI(high, low, close, 20),
+        "ultosc": talib.ULTOSC(high, low, close, 7, 14, 28),
+        "avgprice": talib.AVGPRICE(open_, high, low, close),
+        "medprice": talib.MEDPRICE(high, low),
+        "typprice": talib.TYPPRICE(high, low, close),
+        "wclprice": talib.WCLPRICE(high, low, close),
+        "variance_last": talib.VAR(prices, 14, 1)[-1:],
+        "linearreg_last": talib.LINEARREG(prices, 14)[-1:],
+        "linreg_slope_last": talib.LINEARREG_SLOPE(prices, 14)[-1:],
+        "linreg_intercept_last": talib.LINEARREG_INTERCEPT(prices, 14)[-1:],
+        "linreg_angle_last": talib.LINEARREG_ANGLE(prices, 14)[-1:],
+        "tsf_last": talib.TSF(prices, 14)[-1:],
+        "beta_last": talib.BETA(prices, open_, 14)[-1:],
+        "correl_last": talib.CORREL(prices, open_, 14)[-1:],
+        "macdext_macd_last": talib.MACDEXT(prices, fastperiod=12, fastmatype=2, slowperiod=26, slowmatype=2, signalperiod=9, signalmatype=2)[0][-1:],
+        "macdext_signal_last": talib.MACDEXT(prices, fastperiod=12, fastmatype=2, slowperiod=26, slowmatype=2, signalperiod=9, signalmatype=2)[1][-1:],
+        "macdext_histogram_last": talib.MACDEXT(prices, fastperiod=12, fastmatype=2, slowperiod=26, slowmatype=2, signalperiod=9, signalmatype=2)[2][-1:],
     }
 
     failures = 0

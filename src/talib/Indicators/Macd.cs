@@ -170,6 +170,66 @@ public static class Macd
   }
 
   /// <summary>
+  /// MACD with configurable moving-average types (TA-Lib MACDEXT): the
+  /// fast line, slow line and signal average all use the given
+  /// <paramref name="type"/> (default <see cref="MaType.Ema"/>, the
+  /// plain MACD behaviour). For example,
+  /// <c>MacdExt([1, 4, 3, 5, 2, 6], 3, 2, 2, MaType.Sma).Macd</c>
+  /// rounds to <c>0.3333</c>.
+  /// </summary>
+  /// <param name="prices">Prices, oldest first.</param>
+  /// <param name="fast">Period of the fast average.</param>
+  /// <param name="slow">Period of the slow average.</param>
+  /// <param name="signalPeriod">Period of the signal average.</param>
+  /// <param name="type">The moving-average type used for all three lines.</param>
+  /// <returns>The three latest values as a <see cref="MacdPoint"/>.</returns>
+  /// <exception cref="ArgumentOutOfRangeException">
+  /// A period is not a positive integer, or <paramref name="type"/> is
+  /// not a defined <see cref="MaType"/> value.
+  /// </exception>
+  public static MacdPoint MacdExt(
+      double[] prices,
+      int fast = 12,
+      int slow = 26,
+      int signalPeriod = 9,
+      MaType type = MaType.Ema)
+  {
+    Guard.Period(fast);
+    Guard.Period(slow);
+    Guard.Period(signalPeriod);
+
+    // TA-Lib's MACDEXT computes the EMA variant through the same seeded
+    // walk as the plain MACD, so Ema delegates to it; every other type
+    // takes the difference of its own series.
+    double?[] macdLine;
+    if (type == MaType.Ema)
+    {
+      macdLine = MacdSeries(prices, fast, slow);
+    }
+    else
+    {
+      double?[] fastSeries = SeriesOfType(prices, fast, type);
+      double?[] slowSeries = SeriesOfType(prices, slow, type);
+      macdLine = new double?[prices.Length];
+      for (int i = 0; i < prices.Length; i++)
+      {
+        macdLine[i] = fastSeries[i].HasValue && slowSeries[i].HasValue
+            ? fastSeries[i]!.Value - slowSeries[i]!.Value
+            : null;
+      }
+    }
+
+    double?[] signalLine = SeriesOfType(Ma.DefinedValues(macdLine), signalPeriod, type);
+
+    double? macdValue = macdLine.Length == 0 ? null : macdLine[^1];
+    double? signalValue = signalLine.Length == 0 ? null : signalLine[^1];
+    double? histogramValue = macdValue.HasValue && signalValue.HasValue
+        ? macdValue.Value - signalValue.Value
+        : null;
+    return new MacdPoint(macdValue, signalValue, histogramValue);
+  }
+
+  /// <summary>
   /// MACD with the TA-Lib MACDFIX signal convention: the signal line
   /// is the EMA over the whole MACD series starting at its first
   /// defined value (rather than a trailing window). This is also the
@@ -427,5 +487,23 @@ public static class Macd
   private static double? SignalFromValues(double[] values, int period)
   {
     return Ma.Ema(values[^Math.Min(2 * period, values.Length)..], period);
+  }
+
+  // The series of the given MA type — the machinery behind MACDEXT's
+  // lines and signal.
+  private static double?[] SeriesOfType(double[] values, int period, MaType type)
+  {
+    return type switch
+    {
+      MaType.Sma => Ma.SmaSeries(values, period),
+      MaType.Ema => Ma.EmaSeries(values, period),
+      MaType.Wma => Ma.WmaSeries(values, period),
+      MaType.Dema => Ma.DemaSeries(values, period),
+      MaType.Tema => Ma.TemaSeries(values, period),
+      MaType.Trima => Ma.TrimaSeries(values, period),
+      MaType.Kama => Ma.KamaSeries(values, period),
+      MaType.T3 => Ma.T3Series(values, period),
+      _ => throw new ArgumentOutOfRangeException(nameof(type), type, "unknown MA type"),
+    };
   }
 }

@@ -85,6 +85,33 @@ var rows = new List<(string Name, IEnumerable<double?> Values)>
     ("minus_di_last", new[] { Adx.MinusDi(bars, 14) }),
     ("dx_last", new[] { Adx.Dx(bars, 14) }),
     ("adxr_last", new[] { Adx.Adxr(bars, 14) }),
+    // 0.4.0 families. Stats and MACDEXT are scalar-only in the reference
+    // library (last-value rows); the stats two-series functions run over
+    // the price fixture and the bars' opens.
+    ("trima", Ma.TrimaSeries(prices, 20)),
+    ("kama", Ma.KamaSeries(prices, 20)),
+    ("t3", Ma.T3Series(prices, 5, 0.7)),
+    ("mfi", Mfi.MfiSeries(bars, 14)),
+    ("ad", ChaikinAd.AdSeries(bars)),
+    ("adosc_last", new[] { ChaikinAd.Oscillator(bars, 3, 10) }),
+    ("bop", Bop.BopSeries(bars)),
+    ("cci", Cci.CciSeries(bars, 20)),
+    ("ultosc", UltimateOsc.UltimateOscSeries(bars, 7, 14, 28)),
+    ("avgprice", PriceTransform.AvgPriceSeries(bars).Select(v => (double?)v)),
+    ("medprice", PriceTransform.MedPriceSeries(bars).Select(v => (double?)v)),
+    ("typprice", PriceTransform.TypPriceSeries(bars).Select(v => (double?)v)),
+    ("wclprice", PriceTransform.WclPriceSeries(bars).Select(v => (double?)v)),
+    ("variance_last", new[] { Stats.Variance(prices, 14) }),
+    ("linearreg_last", new[] { Stats.LinearReg(prices, 14) }),
+    ("linreg_slope_last", new[] { Stats.Slope(prices, 14) }),
+    ("linreg_intercept_last", new[] { Stats.Intercept(prices, 14) }),
+    ("linreg_angle_last", new[] { Stats.Angle(prices, 14) }),
+    ("tsf_last", new[] { Stats.Tsf(prices, 14) }),
+    ("beta_last", new[] { Stats.Beta(prices, Opens(bars), 14) }),
+    ("correl_last", new[] { Stats.Correl(prices, Opens(bars), 14) }),
+    ("macdext_macd_last", new[] { Macd.MacdExt(prices, 12, 26, 9, MaType.Wma).Macd }),
+    ("macdext_signal_last", new[] { Macd.MacdExt(prices, 12, 26, 9, MaType.Wma).Signal }),
+    ("macdext_histogram_last", new[] { Macd.MacdExt(prices, 12, 26, 9, MaType.Wma).Histogram }),
 };
 rows.AddRange(StreamingRows(prices, bars));
 
@@ -102,6 +129,8 @@ static IEnumerable<double?> MacdSignal(double[] prices)
   double[] defined = line.Where(v => v.HasValue).Select(v => v!.Value).ToArray();
   return Enumerable.Repeat<double?>(null, 25).Concat(Ma.EmaSeries(defined, 9));
 }
+
+static double[] Opens(Bar[] bars) => bars.Select(b => b.Open).ToArray();
 
 // The streaming rows: identical quantities computed the Init + Next way —
 // warm up on the first four fifths of the fixture, then one O(1) step per
