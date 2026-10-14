@@ -1,11 +1,41 @@
 namespace Talib.Indicators;
 
+/// <summary>The moving-average types <see cref="Ma.MovingAverage"/> and <see cref="Ma.Mavp"/> dispatch to (TA-Lib MA).</summary>
+public enum MaType
+{
+  /// <summary>Simple Moving Average.</summary>
+  Sma,
+
+  /// <summary>Exponential Moving Average.</summary>
+  Ema,
+
+  /// <summary>Linear Weighted Moving Average.</summary>
+  Wma,
+
+  /// <summary>Double Exponential Moving Average.</summary>
+  Dema,
+
+  /// <summary>Triple Exponential Moving Average.</summary>
+  Tema,
+
+  /// <summary>Triangular Moving Average.</summary>
+  Trima,
+
+  /// <summary>Kaufman's Adaptive Moving Average.</summary>
+  Kama,
+
+  /// <summary>Tim Tillson's T3 Moving Average.</summary>
+  T3,
+}
+
 /// <summary>
 /// Moving average indicator.
 ///
-/// Calculates SMA, WMA, EMA, Wilder RMA, DEMA, TEMA and Midpoint, plus
-/// streaming <c>*Init</c>/<c>*Next</c> state for maintaining a moving
-/// average in O(1) as new prices arrive.
+/// Calculates SMA, WMA, EMA, Wilder RMA, DEMA, TEMA, TRIMA, KAMA, T3 and
+/// Midpoint, plus the generic <see cref="MovingAverage"/> dispatcher, the
+/// variable-period <see cref="Mavp"/> and streaming <c>*Init</c>/<c>*Next</c>
+/// state for maintaining a moving average in O(1) as new prices arrive
+/// (TRIMA, KAMA, T3, the dispatcher and MAVP are batch-only).
 ///
 /// Prices are always given in chronological order, oldest first. Series
 /// functions return results aligned with the input, the first
@@ -306,6 +336,239 @@ public static class Ma
     return result;
   }
 
+  /// <summary>
+  /// Calculates the Triangular Moving Average: an SMA applied twice, over
+  /// the half (odd period) or half/half-plus-one (even period) windows.
+  /// For example, <c>Trima([1, 2, 3, 4, 5, 6, 7], 5)</c> is <c>5.0</c>.
+  /// </summary>
+  /// <param name="prices">Prices, oldest first.</param>
+  /// <param name="period">Lookback window, a positive integer.</param>
+  /// <returns>The TRIMA at the latest point, or <c>null</c> when there is not enough data.</returns>
+  public static double? Trima(double[] prices, int period = 30)
+  {
+    Guard.Period(period);
+    var series = TrimaSeries(prices, period);
+    return series.Length == 0 ? null : series[^1];
+  }
+
+  /// <summary>
+  /// Calculates the full TRIMA series: the SMA of the first-stage SMA
+  /// values (the half windows), null-padded with <c>period - 1</c>
+  /// entries.
+  /// </summary>
+  /// <param name="prices">Prices, oldest first.</param>
+  /// <param name="period">Lookback window, a positive integer.</param>
+  /// <returns>The nil-padded TRIMA series.</returns>
+  public static double?[] TrimaSeries(double[] prices, int period = 30)
+  {
+    Guard.Period(period);
+    var result = new double?[prices.Length];
+    if (prices.Length < period)
+    {
+      return result;
+    }
+
+    int first;
+    int second;
+    if (period % 2 == 1)
+    {
+      first = (period + 1) / 2;
+      second = first;
+    }
+    else
+    {
+      first = period / 2;
+      second = period / 2 + 1;
+    }
+
+    double[] values = DefinedValues(SmaSeries(prices, first));
+    values = DefinedValues(SmaSeries(values, second));
+    for (int i = 0; i < values.Length; i++)
+    {
+      result[i + period - 1] = values[i];
+    }
+
+    return result;
+  }
+
+  /// <summary>
+  /// Calculates Kaufman's Adaptive Moving Average: an exponential average
+  /// whose smoothing constant adapts to the efficiency ratio (net change
+  /// over path length) of the last <c>period</c> prices.
+  ///
+  /// The smoothing constants are fixed like TA-Lib's (fastest 2/3,
+  /// slowest 2/31) regardless of the period, and at <c>period</c> 1 the
+  /// series is the input itself. At least <c>period + 1</c> prices are
+  /// required.
+  /// </summary>
+  /// <param name="prices">Prices, oldest first.</param>
+  /// <param name="period">Lookback window, a positive integer.</param>
+  /// <returns>The KAMA at the latest point, or <c>null</c> when there is not enough data.</returns>
+  public static double? Kama(double[] prices, int period = 30)
+  {
+    Guard.Period(period);
+    var series = KamaSeries(prices, period);
+    return series.Length == 0 ? null : series[^1];
+  }
+
+  /// <summary>
+  /// Calculates the full KAMA series, null-padded with <c>period</c>
+  /// entries (one more than the other averages: the efficiency ratio
+  /// needs <c>period</c> one-day changes to its left).
+  /// </summary>
+  /// <param name="prices">Prices, oldest first.</param>
+  /// <param name="period">Lookback window, a positive integer.</param>
+  /// <returns>The nil-padded KAMA series.</returns>
+  public static double?[] KamaSeries(double[] prices, int period = 30)
+  {
+    Guard.Period(period);
+    var result = new double?[prices.Length];
+
+    // At period 1 the series is the input itself.
+    if (period == 1)
+    {
+      for (int i = 0; i < prices.Length; i++)
+      {
+        result[i] = prices[i] * 1.0;
+      }
+
+      return result;
+    }
+
+    if (prices.Length < period + 1)
+    {
+      return result;
+    }
+
+    // The efficiency-ratio sum over the first `period` one-day changes,
+    // and the trailing run of exactly-flat changes (TA-Lib resets the
+    // sum when a whole window has gone flat to drop rounding residue).
+    double sumRoc = 0.0;
+    int nullRun = 0;
+    for (int i = 0; i < period; i++)
+    {
+      double diff = prices[i] - prices[i + 1];
+      sumRoc += Math.Abs(diff);
+      nullRun = diff == 0.0 ? nullRun + 1 : 0;
+    }
+
+    double prevKama = prices[period - 1];
+
+    // The value that left the window at the previous slide, and the
+    // index of the one leaving it now — the add-then-subtract
+    // volatility slide pairs them. The first loop iteration re-seeds
+    // both, exactly like the reference walk.
+    double trailingValue = prices[0];
+    int trailingIdx = 1;
+
+    for (int i = period; i < prices.Length; i++)
+    {
+      double price = prices[i];
+      double roc;
+      if (i == period)
+      {
+        roc = price - prices[0];
+        trailingValue = prices[0];
+        trailingIdx = 1;
+      }
+      else
+      {
+        double leaving = prices[trailingIdx];
+        roc = price - leaving;
+
+        sumRoc = sumRoc - Math.Abs(trailingValue - leaving) + Math.Abs(price - prices[i - 1]);
+
+        nullRun = price - prices[i - 1] == 0.0 ? nullRun + 1 : 0;
+        if (nullRun >= period)
+        {
+          // A whole window has gone flat: drop the rounding residue.
+          nullRun = period;
+          sumRoc = 0.0;
+        }
+
+        trailingValue = leaving;
+        trailingIdx++;
+      }
+
+      double efficiency = sumRoc <= 0.0 || sumRoc <= roc
+          ? 1.0
+          : Math.Min(Math.Abs(roc / sumRoc), 1.0);
+
+      double sc0 = efficiency * KamaConstDiff + KamaConstMax;
+      double sc = sc0 * sc0;
+
+      double value = (price - prevKama) * sc + prevKama;
+      result[i] = value;
+      prevKama = value;
+    }
+
+    return result;
+  }
+
+  /// <summary>
+  /// Calculates Tim Tillson's T3 moving average: six chained EMAs
+  /// combined with the given volume factor. At least <c>6 * period - 5</c>
+  /// prices are required. For example, <c>T3([1..14], 2)</c> rounds to
+  /// <c>13.55</c>.
+  /// </summary>
+  /// <param name="prices">Prices, oldest first.</param>
+  /// <param name="period">EMA period of the six stages, a positive integer.</param>
+  /// <param name="vfactor">The volume factor (TA-Lib's default is 0.7).</param>
+  /// <returns>The T3 at the latest point, or <c>null</c> when there is not enough data.</returns>
+  public static double? T3(double[] prices, int period = 30, double vfactor = 0.7)
+  {
+    Guard.Period(period);
+    var series = T3Series(prices, period, vfactor);
+    return series.Length == 0 ? null : series[^1];
+  }
+
+  /// <summary>
+  /// Calculates the full T3 series: six chained EMA stages combined with
+  /// the volume-factor coefficients, null-padded with
+  /// <c>6 * (period - 1)</c> entries.
+  /// </summary>
+  /// <param name="prices">Prices, oldest first.</param>
+  /// <param name="period">EMA period of the six stages, a positive integer.</param>
+  /// <param name="vfactor">The volume factor (TA-Lib's default is 0.7).</param>
+  /// <returns>The nil-padded T3 series.</returns>
+  public static double?[] T3Series(double[] prices, int period = 30, double vfactor = 0.7)
+  {
+    Guard.Period(period);
+    var result = new double?[prices.Length];
+    if (prices.Length < 6 * period - 5)
+    {
+      return result;
+    }
+
+    // Six chained EMA stages, e1 the closest to the prices and e6 the
+    // most smoothed.
+    var stages = new double[6][];
+    double[] prev = prices;
+    for (int s = 0; s < 6; s++)
+    {
+      stages[s] = EmaValues(prev, period);
+      prev = stages[s];
+    }
+
+    // Coefficients exactly as TA-Lib builds them (same operation order,
+    // so the values agree bit for bit).
+    double temp = vfactor * vfactor;
+    double c1 = 0 - temp * vfactor;
+    double c2 = 3.0 * (temp - c1);
+    double c3 = (0 - 6.0) * temp - 3.0 * (vfactor - c1);
+    double c4 = 3.0 * temp + (3.0 * vfactor + 1.0 - c1);
+
+    double[] e6 = stages[5];
+    for (int i = 0; i < e6.Length; i++)
+    {
+      result[i + 6 * (period - 1)] =
+          c4 * stages[2][i + 3 * (period - 1)]
+          + (c3 * stages[3][i + 2 * (period - 1)] + (c1 * e6[i] + c2 * stages[4][i + period - 1]));
+    }
+
+    return result;
+  }
+
   /// <summary>Calculates the Midpoint of the <c>period</c> newest prices: <c>(highest + lowest) / 2</c>.</summary>
   /// <param name="prices">Prices, oldest first.</param>
   /// <param name="period">Lookback window, a positive integer.</param>
@@ -356,6 +619,109 @@ public static class Ma
     for (int i = 0; i < maxes.Length; i++)
     {
       result[i + period - 1] = (maxes[i] + mins[i]) / 2;
+    }
+
+    return result;
+  }
+
+  /// <summary>
+  /// The generic moving-average dispatcher (TA-Lib <c>MA</c>): computes
+  /// the moving average of the given <paramref name="type"/> — one of
+  /// the <see cref="MaType"/> values. For example,
+  /// <c>MovingAverage([1, 2, 3, 4, 5, 6, 7, 8], 4, MaType.Ema)</c>
+  /// rounds to <c>6.5</c>.
+  /// </summary>
+  /// <param name="prices">Prices, oldest first.</param>
+  /// <param name="period">Lookback window, a positive integer.</param>
+  /// <param name="type">The type of moving average to compute.</param>
+  /// <returns>The moving average at the latest point, or <c>null</c> when there is not enough data.</returns>
+  /// <exception cref="ArgumentOutOfRangeException">
+  /// <paramref name="type"/> is not a defined <see cref="MaType"/> value.
+  /// </exception>
+  public static double? MovingAverage(double[] prices, int period, MaType type)
+  {
+    return type switch
+    {
+      MaType.Sma => Sma(prices, period),
+      MaType.Ema => Ema(prices, period),
+      MaType.Wma => Wma(prices, period),
+      MaType.Dema => Dema(prices, period),
+      MaType.Tema => Tema(prices, period),
+      MaType.Trima => Trima(prices, period),
+      MaType.Kama => Kama(prices, period),
+      MaType.T3 => T3(prices, period),
+      _ => throw new ArgumentOutOfRangeException(nameof(type), type, "unknown MA type"),
+    };
+  }
+
+  /// <summary>
+  /// Calculates the variable-period moving average (TA-Lib <c>MAVP</c>):
+  /// the value at each point uses the period given for that point,
+  /// clamped into <c>[minPeriod, maxPeriod]</c> (both defaulting to 2 and
+  /// 30) and truncated toward zero. Only <see cref="MaType.Sma"/> and
+  /// <see cref="MaType.Ema"/> are supported. For example,
+  /// <c>Mavp([1, 2, 3, 4, 5, 6], [2, 2, 2, 2, 2, 2])</c> ends at
+  /// <c>5.5</c>.
+  /// </summary>
+  /// <param name="prices">Prices, oldest first.</param>
+  /// <param name="periods">
+  /// Per-point periods as numbers, zipped with <paramref name="prices"/>:
+  /// only <c>min(prices.Length, periods.Length)</c> points are produced.
+  /// </param>
+  /// <param name="minPeriod">The lower clamp bound, a positive integer.</param>
+  /// <param name="maxPeriod">The upper clamp bound, a positive integer.</param>
+  /// <param name="type">The moving-average type, Sma or Ema.</param>
+  /// <returns>
+  /// The variable-period series, aligned with the input; an entry is
+  /// <c>null</c> while fewer than its (clamped) period prices have been
+  /// seen.
+  /// </returns>
+  /// <exception cref="ArgumentOutOfRangeException">
+  /// A period bound is not a positive integer, or <paramref name="type"/>
+  /// is neither Sma nor Ema (the latter raised per point, once a point
+  /// has enough data for its period).
+  /// </exception>
+  public static double?[] Mavp(
+      double[] prices,
+      double[] periods,
+      int minPeriod = 2,
+      int maxPeriod = 30,
+      MaType type = MaType.Sma)
+  {
+    Guard.Period(minPeriod);
+    Guard.Period(maxPeriod);
+    int count = Math.Min(prices.Length, periods.Length);
+    var result = new double?[count];
+    for (int index = 0; index < count; index++)
+    {
+      // Clamped like the reference: max(min) then min(max), truncated.
+      int period = (int)Math.Truncate(Math.Min(Math.Max(periods[index], minPeriod), maxPeriod));
+      if (index + 1 < period)
+      {
+        continue;
+      }
+
+      switch (type)
+      {
+        case MaType.Sma:
+        {
+          double sum = 0;
+          for (int i = index + 1 - period; i <= index; i++)
+          {
+            sum += prices[i];
+          }
+
+          result[index] = sum / period;
+          break;
+        }
+
+        case MaType.Ema:
+          result[index] = Ema(prices[..(index + 1)], period);
+          break;
+
+        default:
+          throw new ArgumentOutOfRangeException(nameof(type), type, "unknown MAVP type");
+      }
     }
 
     return result;
@@ -633,6 +999,31 @@ public static class Ma
 
     return values;
   }
+
+  // The defined (non-null) values of a padded series — the composite
+  // averages' stage input.
+  internal static double[] DefinedValues(double?[] series)
+  {
+    var values = new double[series.Length];
+    int count = 0;
+    foreach (double? value in series)
+    {
+      if (value.HasValue)
+      {
+        values[count++] = value.Value;
+      }
+    }
+
+    return values[..count];
+  }
+
+  // KAMA mirroring TA-Lib: the smoothing constants are fixed (fastest
+  // 2/3, slowest 2/31 — not a function of the period), the efficiency
+  // ratio is clamped to 1 (and set to 1 on a flat window), and the
+  // volatility sum slides by add-then-subtract like the C code, so the
+  // series matches TA-Lib bar for bar.
+  private const double KamaConstMax = 2.0 / (30.0 + 1.0);
+  private const double KamaConstDiff = 2.0 / (2.0 + 1.0) - KamaConstMax;
 
   private static double SeedSum(double[] prices, int period)
   {

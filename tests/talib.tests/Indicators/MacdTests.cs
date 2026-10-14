@@ -159,6 +159,65 @@ public class MacdTests
     Assert.Throws<ArgumentException>(() => Macd.MacdInit(new[] { 1.0, 2, 3, 4 }, 2, 3, 3));
   }
 
+  [Fact]
+  public void MacdExt_matches_the_doctest_walk()
+  {
+    Macd.MacdPoint point = Macd.MacdExt(new[] { 1.0, 4, 3, 5, 2, 6 }, 3, 2, 2, MaType.Sma);
+    Assert.Equal(0.3333, Round(point.Macd, 4));
+    Assert.Equal(0.0833, Round(point.Signal, 4));
+    Assert.Equal(0.25, Round(point.Histogram, 4));
+  }
+
+  [Fact]
+  public void MacdExt_with_ema_reuses_the_plain_macd_walk()
+  {
+    Macd.MacdPoint ext = Macd.MacdExt(Prices, 12, 26, 9, MaType.Ema);
+    Assert.True(Math.Abs(ext.Macd!.Value - Macd.Line(Prices)!.Value) < 1.0e-9);
+    Assert.NotNull(ext.Signal);
+    Assert.NotNull(ext.Histogram);
+  }
+
+  [Fact]
+  public void MacdExt_takes_the_difference_of_the_typed_series()
+  {
+    Macd.MacdPoint smaExt = Macd.MacdExt(Prices, 12, 26, 9, MaType.Sma);
+    Assert.Equal(
+        Ma.SmaSeries(Prices, 12)[^1]!.Value - Ma.SmaSeries(Prices, 26)[^1]!.Value,
+        smaExt.Macd!.Value);
+
+    Macd.MacdPoint wmaExt = Macd.MacdExt(Prices, 12, 26, 9, MaType.Wma);
+    Assert.Equal(
+        Ma.WmaSeries(Prices, 12)[^1]!.Value - Ma.WmaSeries(Prices, 26)[^1]!.Value,
+        wmaExt.Macd!.Value);
+
+    Assert.NotNull(smaExt.Signal);
+    Assert.True(Math.Abs(smaExt.Histogram!.Value - (smaExt.Macd!.Value - smaExt.Signal!.Value)) < 1.0e-12);
+  }
+
+  [Fact]
+  public void MacdExt_returns_nulls_without_enough_data()
+  {
+    Macd.MacdPoint empty = Macd.MacdExt(Array.Empty<double>(), 12, 26, 9, MaType.Sma);
+    Assert.Null(empty.Macd);
+    Assert.Null(empty.Signal);
+    Assert.Null(empty.Histogram);
+
+    // The signal needs its own seed window of defined MACD values.
+    Macd.MacdPoint partial = Macd.MacdExt(new[] { 1.0, 2, 3, 4, 5 }, 2, 3, 9, MaType.Sma);
+    Assert.NotNull(partial.Macd);
+    Assert.Null(partial.Signal);
+    Assert.Null(partial.Histogram);
+  }
+
+  [Fact]
+  public void MacdExt_validates_periods_and_type()
+  {
+    Assert.Throws<ArgumentOutOfRangeException>(() => Macd.MacdExt(Prices, 0, 26, 9, MaType.Sma));
+    Assert.Throws<ArgumentOutOfRangeException>(() => Macd.MacdExt(Prices, 12, 0, 9, MaType.Ema));
+    Assert.Throws<ArgumentOutOfRangeException>(() => Macd.MacdExt(Prices, 12, 26, 0, MaType.Sma));
+    Assert.Throws<ArgumentOutOfRangeException>(() => Macd.MacdExt(Prices, 12, 26, 9, (MaType)99));
+  }
+
   private static void CheckMacdStreaming(
       double[] history,
       int fast,
