@@ -15,13 +15,15 @@ noted.
   while the lookback window fills; scalar functions return the value at
   the latest point.
 - Every function returns `null` — never `0` — when there is not enough
-  data, since `0` is a legitimate reading for several indicators.
+  data, since `0` is a legitimate reading for several indicators. (The
+  one exception is TA-Lib-defined degenerate readings, like Beta on a
+  window with no return variance, which the C library defines as 0.)
 - Invalid periods throw `ArgumentOutOfRangeException`.
 - Outputs start where the math starts (TA-Lib's unstable-period
   machinery is not emulated); where TA-Lib's unified outputs begin
   later, ours define values earlier — same values on the shared bars.
 
-## Overlap studies
+## Overlap studies — 15 of 16 (all but `HT_TRENDLINE`)
 
 | TA-Lib | Talib | Status |
 |---|---|---|
@@ -30,29 +32,29 @@ noted.
 | WMA | `Ma.Wma` / `WmaSeries` | ✓ (1.5e-14) |
 | DEMA | `Ma.Dema` / `DemaSeries` | ✓ (bit-exact) |
 | TEMA | `Ma.Tema` / `TemaSeries` | ✓ (bit-exact) |
-| TRIMA | — | |
-| KAMA | — | |
-| T3 | — | |
+| TRIMA | `Ma.Trima` / `TrimaSeries` | ✓ (2.8e-14) |
+| KAMA | `Ma.Kama` / `KamaSeries` | ✓ (1.6e-16) |
+| T3 | `Ma.T3` / `T3Series` | ✓ (2.2e-15) |
+| MA | `Ma.MovingAverage` | ✓ (dispatcher; verified through its members) |
+| MAVP | `Ma.Mavp` | ✓ (not dumped; covered by unit tests) |
 | MIDPOINT | `Ma.Midpoint` / `MidpointSeries` | ✓ (bit-exact) |
 | MIDPRICE | `Donchian.Midprice` | ✓ |
 | BBANDS | `Bbands.Latest` / `BbandsSeries` | ✓ (middle bit-exact, bands 1.3e-13) |
 | SAR | `Sar.Latest` / `SarSeries` | ✓ (bit-exact) |
 | SAR-ext | `Sar.SarExt` / `SarExtSeries` | ✓ (alias of the base series) |
-| MAVP | — | |
-| Wilder RMA | `Ma.Rma` / `RmaSeries` | ✓ (no standalone TA-Lib function) |
-| Keltner (beyond TA-Lib) | `Keltner.Latest` / `KeltnerSeries` | ✓ (EMA ± mult·ATR, middle bit-exact) |
+| HT_TRENDLINE | — | with the Hilbert family |
 
-## Momentum indicators
+## Momentum indicators — 31 of 31 (complete)
 
 | TA-Lib | Talib | Status |
 |---|---|---|
 | RSI | `Rsi.Latest` / `RsiSeries` | ✓ (7.3e-14, Wilder) |
 | MACD | `Macd.Line` / `Signal` / `Histogram` / `MacdAll` | ✓ (line bit-exact) |
-| MACDEXT | — | needs TRIMA/KAMA/T3 |
+| MACDEXT | `Macd.MacdExt` | ✓ (~1e-12, WMA legs) |
 | MACDFIX | `Macd.MacdFix` | ✓ (MACDFIX convention) |
 | STOCH (fast) | `Stochastic.K` / `KSeries` | ✓ (bit-exact) |
 | STOCH (slow) | `Stochastic.Slow` / `SlowSeries` | ✓ (bit-exact) |
-| STOCHRSI | — | |
+| STOCHRSI | `StochRsi.Latest` / `StochRsiSeries` | ✓ (2.1e-13) |
 | WILLR | `WilliamsR.Latest` / `WilliamsRSeries` | ✓ (bit-exact) |
 | ROC | `Roc.Latest` / `RocSeries` | ✓ |
 | ROCP | `Roc.Rocp` | ✓ |
@@ -69,32 +71,61 @@ noted.
 | PLUS_DI / MINUS_DI | `Adx.PlusDi` / `Adx.MinusDi` | ✓ |
 | PLUS_DM / MINUS_DM | `Adx.PlusDm` / `Adx.MinusDm` | ✓ |
 | DX | `Adx.Dx` | ✓ |
-| STOCHRSI | `StochRsi.Latest` / `StochRsiSeries` | ✓ (2.1e-13) |
 | TRIX | `Trix.Latest` / `TrixSeries` | ✓ (bit-exact) |
-| BOP, CCI, MFI, ULTOSC | — | |
+| BOP | `Bop.Latest` / `BopSeries` | ✓ (bit-exact) |
+| CCI | `Cci.Latest` / `CciSeries` | ✓ (2.6e-12) |
+| MFI | `Mfi.Latest` / `MfiSeries` | ✓ |
+| ULTOSC | `UltimateOsc.Latest` / `UltimateOscSeries` | ✓ (4.3e-16) |
 
-## Volatility indicators
+## Volatility indicators — 3 of 3 (complete)
 
 | TA-Lib | Talib | Status |
 |---|---|---|
-| STDDEV | `StdDev.Latest` / `StdDevSeries` | ✓ (4.3e-12) |
 | ATR | `Atr.Latest` / `AtrSeries` | ✓ (5.2e-16) |
 | NATR | `Atr.Natr` | ✓ |
 | TRANGE | `Atr.TrueRange` | ✓ |
-| VAR | — | |
 
-## Volume indicators
+## Volume indicators — 3 of 3 (complete)
 
 | TA-Lib | Talib | Status |
 |---|---|---|
 | OBV | `Obv.Latest` / `ObvSeries` | ✓ (bit-exact) |
-| AD, ADOSC, MFI, PVT | — | |
+| AD | `ChaikinAd.Latest` / `AdSeries` | ✓ (bit-exact) |
+| ADOSC | `ChaikinAd.Oscillator` | ✓ (4.9e-14, over the A/D line) |
 
-## Statistics, price transform, cycles, patterns
+## Statistic functions — 9 of 9 (complete)
 
-Not yet started: LINEARREG family, TSF, BETA, CORREL, STDP/VAR/STD
-cross-sectionals, AVGPRICE/MEDPRICE/TYPPRICE/WCLPRICE, the Hilbert
-transform family, MAMA/FAMA, and the 61 candlestick patterns.
+| TA-Lib | Talib | Status |
+|---|---|---|
+| STDDEV | `StdDev.Latest` / `StdDevSeries` | ✓ (4.3e-12) |
+| VAR | `Stats.Variance` | ✓ (2.6e-16) |
+| BETA | `Stats.Beta` | ✓ (bit-exact, returns-based) |
+| CORREL | `Stats.Correl` | ✓ (1.6e-15) |
+| LINEARREG | `Stats.LinearReg` | ✓ (2.5e-15) |
+| LINEARREG_ANGLE | `Stats.Angle` | ✓ (2.8e-14) |
+| LINEARREG_INTERCEPT | `Stats.Intercept` | ✓ (2.4e-15) |
+| LINEARREG_SLOPE | `Stats.Slope` | ✓ (4.8e-14) |
+| TSF | `Stats.Tsf` | ✓ (2.9e-15) |
+
+## Price transform — 4 of 4 (complete)
+
+| TA-Lib | Talib | Status |
+|---|---|---|
+| AVGPRICE | `PriceTransform.AvgPrice` | ✓ (2.5e-16) |
+| MEDPRICE | `PriceTransform.MedPrice` | ✓ (bit-exact) |
+| TYPPRICE | `PriceTransform.TypPrice` | ✓ (bit-exact) |
+| WCLPRICE | `PriceTransform.WclPrice` | ✓ (bit-exact) |
+
+## Remaining
+
+Cycles (the Hilbert transform family + MAMA/FAMA) and all 61
+candlestick patterns.
+
+## Beyond the TA-Lib list
+
+Keltner channels (`Keltner`, EMA ± mult·ATR) and rolling VWAP
+(`Vwap`, TP-volume over a window); Wilder RMA (`Ma.Rma`, the smoothing
+behind ATR/ADX, no standalone TA-Lib function).
 
 ## Streaming
 
@@ -107,12 +138,23 @@ their batch twins.
 
 ## Divergences from the Elixir reference
 
-Two 0.3.0 families follow the TA-Lib C library where the Elixir
-reference (whose audit never dumped them) diverges: CMO (TA-Lib uses
-Wilder-smoothed averages — exactly `2 * RSI - 100` — not sliding-window
-sums) and SAR (trend seeded from +DM/-DM, first bar consumed as the
-second bar's stop, `fma` stop arithmetic, the C code's first-iteration
-clamp). Both are bit-exact here; the Elixir library is worth the same
-upstream fix.
+Four families follow the TA-Lib C library where the Elixir reference
+(whose audit never dumped them) diverges:
 
-**Summary: 40 of 133 functions** (plus Keltner, beyond the TA-Lib list).
+- **CMO** (0.3.0): TA-Lib Wilder-smooths the average gains and losses
+  (exactly `2 * RSI - 100`), not sliding-window sums.
+- **SAR** (0.3.0): trend seeded from +DM/-DM, first bar consumed as the
+  second bar's stop, `fma` stop arithmetic, the C first-iteration
+  clamp.
+- **Beta** (0.4.0): TA-Lib regresses per-bar returns with
+  shift-anchored sliding sums and reseed triggers (`ta_BETA.c`); the
+  reference regresses raw prices — a different quantity.
+- **ADOSC** (0.4.0): TA-Lib takes EMA(3) − EMA(10) over the cumulative
+  A/D line; the reference oscillates the per-bar flows.
+
+All four are bit-exact or near-exact here; the Elixir library is worth
+the same upstream fixes.
+
+**Summary: 64 of 133 functions** (+ Keltner and rolling VWAP beyond the
+list). Remaining: the Hilbert/MAMA cycle family and the 61 candlestick
+patterns.

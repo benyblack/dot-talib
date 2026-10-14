@@ -704,16 +704,16 @@ public static class Ma
       switch (type)
       {
         case MaType.Sma:
-        {
-          double sum = 0;
-          for (int i = index + 1 - period; i <= index; i++)
           {
-            sum += prices[i];
-          }
+            double sum = 0;
+            for (int i = index + 1 - period; i <= index; i++)
+            {
+              sum += prices[i];
+            }
 
-          result[index] = sum / period;
-          break;
-        }
+            result[index] = sum / period;
+            break;
+          }
 
         case MaType.Ema:
           result[index] = Ema(prices[..(index + 1)], period);
