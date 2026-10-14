@@ -48,28 +48,178 @@ public static class Stats
   }
 
   /// <summary>
-  /// Calculates the beta of <paramref name="prices"/> against
-  /// <paramref name="market"/> over the <c>period</c> newest points:
-  /// the covariance of the two windows divided by the variance of the
-  /// <paramref name="prices"/> window (the reference divides by the
-  /// first series' variance — its doctest pins it, e.g.
-  /// <c>beta([1,2,3,4], [2,4,6,8], 3) == 2.0</c>).
+  /// Calculates the beta of <paramref name="market"/> (the y axis) against
+  /// <paramref name="prices"/> (the x axis) over the <c>period</c> newest
+  /// points, following the TA-Lib C reference exactly: the slope of the
+  /// regression of the two series' per-bar returns, computed with
+  /// shift-anchored sliding sums and the C code's reseed triggers
+  /// (denominator cancellation, outlier transit, every 32·period bars).
+  ///
+  /// Note: the textbook (and Elixir-reference) formulation regresses the
+  /// raw prices instead of their returns — a different quantity; this
+  /// implementation follows the C library, verified value by value in
+  /// the audit. Degenerate windows (no return variance) produce
+  /// <c>0</c>, the C library's defined reading, not <c>null</c>.
   /// </summary>
-  /// <param name="prices">Prices, oldest first.</param>
-  /// <param name="market">Market prices, oldest first.</param>
+  /// <param name="prices">Prices (the x axis), oldest first.</param>
+  /// <param name="market">Market prices (the y axis), oldest first.</param>
   /// <param name="period">Lookback window, a positive integer.</param>
-  /// <returns>The beta at the latest point, or <c>null</c> when there is not enough data or the prices' variance is zero.</returns>
+  /// <returns>The beta at the latest point, or <c>null</c> when there is not enough data.</returns>
   public static double? Beta(double[] prices, double[] market, int period = 14)
   {
     Guard.Period(period);
-    (double Cov, double VarX, double VarY)? moments = Moments(prices, market, period);
-    if (moments is null)
+    double?[] series = BetaSeries(prices, market, period);
+    return series.Length == 0 ? null : series[^1];
+  }
+
+  /// <summary>
+  /// A faithful port of TA-Lib's <c>ta_BETA</c>: returns-based regression
+  /// slope over a sliding window of <c>period</c> returns (so values are
+  /// defined from index <c>period</c> on), with the shift-anchor and
+  /// reseed machinery kept operation for operation.
+  /// </summary>
+  /// <param name="x">The x axis series, oldest first.</param>
+  /// <param name="y">The y axis series, oldest first.</param>
+  /// <param name="period">Lookback window, a positive integer.</param>
+  /// <returns>The null-padded beta series.</returns>
+  private static double?[] BetaSeries(double[] x, double[] y, int period)
+  {
+    int n0 = Math.Min(x.Length, y.Length);
+    var result = new double?[n0];
+    if (n0 <= period)
     {
-      return null;
+      return result;
     }
 
-    var (cov, varX, _) = moments.Value;
-    return varX == 0 ? null : cov / varX;
+    double sXx = 0, sYy = 0, sXy = 0, sX = 0, sY = 0;
+    double lastX = x[0], lastY = y[0];
+    double trailingLastX = lastX, trailingLastY = lastY;
+    double shiftX = 0, shiftY = 0;
+
+    // The trailing cursor points at the oldest return still in the
+    // window (bar 1), carrying bar 0 as its predecessor price.
+    int trailingIdx = 1;
+    double n = period;
+    int barsSinceReseed = 32 * period;
+    double leavingXx = 0, leavingYy = 0;
+
+    // Anchor the returns at the first change; later re-anchors use the
+    // window mean (see the reseed below).
+    if (lastX != 0.0)
+    {
+      shiftX = (x[1] - lastX) / lastX;
+    }
+
+    if (lastY != 0.0)
+    {
+      shiftY = (y[1] - lastY) / lastY;
+    }
+
+    int i = 1;
+    for (; i < period; i++)
+    {
+      double rx = lastX != 0.0 ? (x[i] - lastX) / lastX - shiftX : -shiftX;
+      lastX = x[i];
+      double ry = lastY != 0.0 ? (y[i] - lastY) / lastY - shiftY : -shiftY;
+      lastY = y[i];
+      sXx += rx * rx;
+      sYy += ry * ry;
+      sXy += rx * ry;
+      sX += rx;
+      sY += ry;
+    }
+
+    while (i <= n0 - 1)
+    {
+      double rx = lastX != 0.0 ? (x[i] - lastX) / lastX - shiftX : -shiftX;
+      lastX = x[i];
+      double ry = lastY != 0.0 ? (y[i] - lastY) / lastY - shiftY : -shiftY;
+      lastY = y[i];
+      i++;
+      sXx += rx * rx;
+      sYy += ry * ry;
+      sXy += rx * ry;
+      sX += rx;
+      sY += ry;
+
+      double denomScale = n * sXx;
+      double denom = denomScale - sX * sX;
+
+      // Re-anchor and rebuild when the shift has gone stale: denominator
+      // cancellation, a squared outlier leaving the window, or simply
+      // every 32*period bars.
+      barsSinceReseed--;
+      if (denom < 0.000001 * denomScale || leavingXx > 1000.0 * sXx || leavingYy > 1000.0 * sYy || barsSinceReseed <= 0)
+      {
+        barsSinceReseed = 32 * period;
+        double sumRx = 0, sumRy = 0;
+        double prevX = trailingLastX, prevY = trailingLastY;
+        for (int j = trailingIdx; j < i; j++)
+        {
+          if (prevX != 0.0)
+          {
+            sumRx += (x[j] - prevX) / prevX;
+          }
+
+          prevX = x[j];
+          if (prevY != 0.0)
+          {
+            sumRy += (y[j] - prevY) / prevY;
+          }
+
+          prevY = y[j];
+        }
+
+        shiftX = sumRx / n;
+        shiftY = sumRy / n;
+
+        prevX = trailingLastX;
+        prevY = trailingLastY;
+        sXx = 0;
+        sYy = 0;
+        sXy = 0;
+        sX = 0;
+        sY = 0;
+        for (int j = trailingIdx; j < i; j++)
+        {
+          double bx = prevX != 0.0 ? (x[j] - prevX) / prevX - shiftX : -shiftX;
+          prevX = x[j];
+          double by = prevY != 0.0 ? (y[j] - prevY) / prevY - shiftY : -shiftY;
+          prevY = y[j];
+          sXx += bx * bx;
+          sYy += by * by;
+          sXy += bx * by;
+          sX += bx;
+          sY += by;
+        }
+
+        denomScale = n * sXx;
+        denom = denomScale - sX * sX;
+        if (denom < 0.0)
+        {
+          denom = 0.0;
+        }
+      }
+
+      // Always read the trailing bar before writing the output.
+      double tx = trailingLastX != 0.0 ? (x[trailingIdx] - trailingLastX) / trailingLastX - shiftX : -shiftX;
+      trailingLastX = x[trailingIdx];
+      double ty = trailingLastY != 0.0 ? (y[trailingIdx] - trailingLastY) / trailingLastY - shiftY : -shiftY;
+      trailingLastY = y[trailingIdx];
+      trailingIdx++;
+
+      result[i - 1] = denom > 0.00000000000001 * denomScale ? (n * sXy - sX * sY) / denom : 0.0;
+
+      leavingXx = tx * tx;
+      leavingYy = ty * ty;
+      sXx -= tx * tx;
+      sYy -= ty * ty;
+      sXy -= tx * ty;
+      sX -= tx;
+      sY -= ty;
+    }
+
+    return result;
   }
 
   /// <summary>

@@ -9,7 +9,9 @@ namespace Talib.Indicators;
 /// <list type="bullet">
 /// <item><c>AD</c> accumulates <c>CLV * volume</c> across bars
 /// (zero-range bars contribute nothing)</item>
-/// <item><c>ADOSC = EMA(CLV * volume, fast) - EMA(CLV * volume, slow)</c></item>
+/// <item><c>ADOSC = EMA(AD line, fast) - EMA(AD line, slow)</c>, the
+/// exponentials taken over the cumulative line (the TA-Lib convention),
+/// not over the per-bar flows</item>
 /// </list>
 ///
 /// Bars are always given in chronological order, oldest first, and all
@@ -51,8 +53,11 @@ public static class ChaikinAd
 
   /// <summary>
   /// Calculates the Chaikin A/D oscillator:
-  /// <c>EMA(flow, fast) - EMA(flow, slow)</c>, defined once the slow
-  /// EMA fills (from bar <c>slow - 1</c> on).
+  /// <c>EMA(AD line, fast) - EMA(AD line, slow)</c>, the exponentials
+  /// taken over the cumulative A/D line (the TA-Lib convention; the
+  /// Elixir reference oscillates the per-bar flows instead, which is a
+  /// different quantity). Defined once the slow EMA fills (from bar
+  /// <c>slow - 1</c> on).
   /// </summary>
   /// <param name="bars">Bars, oldest first; High, Low, Close and Volume are read.</param>
   /// <param name="fast">Fast EMA period, a positive integer.</param>
@@ -66,19 +71,14 @@ public static class ChaikinAd
   {
     Guard.Period(fast);
     Guard.Period(slow);
-    if (bars.Length < slow)
+    if (bars.Length < Math.Max(fast, slow))
     {
       return null;
     }
 
-    var flows = new double[bars.Length];
-    for (int i = 0; i < bars.Length; i++)
-    {
-      flows[i] = MoneyFlow(bars[i]);
-    }
-
-    double? fastEma = Ma.Ema(flows, fast);
-    double? slowEma = Ma.Ema(flows, slow);
+    double[] line = AdSeries(bars).Select(v => v!.Value).ToArray();
+    double? fastEma = Ma.Ema(line, fast);
+    double? slowEma = Ma.Ema(line, slow);
     if (fastEma is null || slowEma is null)
     {
       return null;

@@ -71,12 +71,14 @@ public class StatsTests
   [Fact]
   public void Beta_and_Correl_match_the_fixture()
   {
-    Assert.Equal(0.6104, Round(Stats.Beta(Prices, Market, 14), 4));
+    // Returns-based beta (TA-Lib), recorded from the C library; the
+    // price-space regression the Elixir reference used gives 0.6104.
+    Assert.Equal(1.0037, Round(Stats.Beta(Prices, Market, 14), 4));
     Assert.Equal(0.938, Round(Stats.Correl(Prices, Market, 14), 4));
 
-    // A perfectly linear relation has correlation 1 and known beta.
+    // A linear market (y = 2x in levels) has beta 1 in returns.
     Assert.Equal(1.0, Stats.Correl(new[] { 1.0, 2, 3, 4 }, new[] { 2.0, 4, 6, 8 }, 3));
-    Assert.Equal(2.0, Stats.Beta(new[] { 1.0, 2, 3, 4 }, new[] { 2.0, 4, 6, 8 }, 3));
+    Assert.Equal(1.0, Stats.Beta(new[] { 1.0, 2, 3, 4 }, new[] { 2.0, 4, 6, 8 }, 3));
   }
 
   [Fact]
@@ -85,13 +87,13 @@ public class StatsTests
     Assert.Null(Stats.Beta(Prices, new[] { 1.0, 2 }, 14));
     Assert.Null(Stats.Correl(new[] { 1.0, 2 }, Prices, 14));
 
-    // Beta guards on the variance of the prices (the first series) and
-    // correlation on either variance: flat input yields nil — unless
-    // only the market is flat, when beta is exactly 0.
-    double[] flat = { 5.0, 5, 5 };
-    Assert.Null(Stats.Beta(flat, new[] { 1.0, 2, 3 }, 3));
-    Assert.Null(Stats.Correl(new[] { 1.0, 2, 3 }, flat, 3));
-    Assert.Equal(0.0, Stats.Beta(new[] { 1.0, 2, 3 }, flat, 3));
+    // Correlation is undefined on a flat series; beta on flat prices is
+    // a degenerate returns regression whose defined reading is 0 in the
+    // C library (not null), and a flat market (y) gives slope 0.
+    double[] flat = { 5.0, 5, 5, 5 };
+    Assert.Null(Stats.Correl(new[] { 1.0, 2, 3, 4 }, flat, 3));
+    Assert.Equal(0.0, Stats.Beta(flat, new[] { 1.0, 2, 3, 4 }, 3));
+    Assert.Equal(0.0, Stats.Beta(new[] { 1.0, 2, 3, 4 }, flat, 3));
   }
 
   [Fact]

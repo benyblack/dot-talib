@@ -41,7 +41,10 @@ public class ChaikinAdTests
   public void Oscillator_matches_the_reference()
   {
     Assert.Null(ChaikinAd.Oscillator(Bars, 3, 200));
-    Assert.Equal(76.0517, Round(ChaikinAd.Oscillator(Bars, 3, 10), 4));
+    // EMA(3) - EMA(10) over the cumulative A/D line (the TA-Lib
+    // convention), recorded from the C library; the Elixir reference
+    // oscillates the per-bar flows, which gives 76.0517 instead.
+    Assert.Equal(56.9191, Round(ChaikinAd.Oscillator(Bars, 3, 10), 4));
   }
 
   [Fact]
