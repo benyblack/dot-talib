@@ -1,11 +1,22 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>netstandard2.0</TargetFramework>
     <RootNamespace>Talib</RootNamespace>
     <PackageId>Talib</PackageId>
-    <Version>0.1.0</Version>
+    <Version>0.2.0</Version>
     <Authors>Behnam Shomali</Authors>
-    <PackageLicenseExpression>MIT</PackageLicenseExpression>    
+    <Description>Technical analysis indicators with TA-Lib-compatible values: moving averages, RSI, MACD, Stochastic, ATR, Bollinger Bands, Donchian channels and more — batch, scalar and O(1) streaming APIs.</Description>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <RepositoryUrl>https://github.com/benyblack/dot-talib</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageProjectUrl>https://github.com/benyblack/dot-talib</PackageProjectUrl>
+    <PackageTags>technical-analysis;ta-lib;indicators;trading;backtesting;moving-average;rsi;macd;streaming</PackageTags>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
 </Project>
