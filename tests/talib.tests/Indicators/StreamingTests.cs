@@ -161,6 +161,17 @@ public class StreamingTests
   }
 
   [Fact]
+  public void Streaming_aroon_continues_the_batch_series_bit_for_bit()
+  {
+    var (state, warmup) = Aroon.AroonInit(Prices[..300], 14);
+    var batch = Aroon.AroonSeries(Prices, 14);
+    Assert.Equal(batch[..300], warmup);
+
+    var streamed = Prices[300..].Select(price => Aroon.AroonNext(state, price)).ToArray();
+    Assert.Equal(batch[300..], streamed);
+  }
+
+  [Fact]
   public void Insufficient_history_throws_ArgumentException()
   {
     Assert.Throws<ArgumentException>(() => Ma.SmaInit(Enumerable.Range(1, 4).Select(i => (double)i).ToArray(), 5));
@@ -231,6 +242,13 @@ public class StreamingTests
     CheckStreamEqualsBatch(
         prices, h => WilliamsR.WilliamsRInit(h, 4), WilliamsR.WilliamsRNext,
         WilliamsR.WilliamsRSeries(prices, 4), split: 20);
+
+    // Aroon's days-since-extreme must also keep the earliest tie.
+    var (aroonState, aroonWarmup) = Aroon.AroonInit(prices[..20], 4);
+    var aroonBatch = Aroon.AroonSeries(prices, 4);
+    Assert.Equal(aroonBatch[..20], aroonWarmup);
+    var aroonStreamed = prices[20..].Select(price => Aroon.AroonNext(aroonState, price)).ToArray();
+    Assert.Equal(aroonBatch[20..], aroonStreamed);
   }
 
   private static double[] Defined(IEnumerable<double?> values) =>

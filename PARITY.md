@@ -36,10 +36,11 @@ noted.
 | MIDPOINT | `Ma.Midpoint` / `MidpointSeries` | ✓ (bit-exact) |
 | MIDPRICE | `Donchian.Midprice` | ✓ |
 | BBANDS | `Bbands.Latest` / `BbandsSeries` | ✓ (middle bit-exact, bands 1.3e-13) |
-| SAR | — | |
-| SAR-ext | — | |
+| SAR | `Sar.Latest` / `SarSeries` | ✓ (bit-exact) |
+| SAR-ext | `Sar.SarExt` / `SarExtSeries` | ✓ (alias of the base series) |
 | MAVP | — | |
 | Wilder RMA | `Ma.Rma` / `RmaSeries` | ✓ (no standalone TA-Lib function) |
+| Keltner (beyond TA-Lib) | `Keltner.Latest` / `KeltnerSeries` | ✓ (EMA ± mult·ATR, middle bit-exact) |
 
 ## Momentum indicators
 
@@ -58,7 +59,19 @@ noted.
 | ROCR | `Roc.Rocr` | ✓ |
 | ROCR100 | `Roc.Rocr100` | ✓ |
 | MOM | `Momentum.Latest` / `MomentumSeries` | ✓ |
-| CMO, APO, PPO, AROON, AROONOSC, BOP, CCI, ADX, PLUS_DI, MINUS_DI, DX, ADXR, ULTOSC, TRIX | — | |
+| CMO | `Cmo.Latest` / `CmoSeries` | ✓ (bit-exact, Wilder-smoothed) |
+| APO | `Apo.Latest` / `ApoSeries` | ✓ (bit-exact) |
+| PPO | `Ppo.Latest` / `PpoSeries` | ✓ (bit-exact) |
+| AROON | `Aroon.Latest` / `AroonSeries` | ✓ (1.7e-16) |
+| AROONOSC | `Aroon.AroonOsc` | ✓ |
+| ADX | `Adx.Latest` / `AdxAll` | ✓ (last value bit-exact; scalar-only, like the reference) |
+| ADXR | `Adx.Adxr` | ✓ |
+| PLUS_DI / MINUS_DI | `Adx.PlusDi` / `Adx.MinusDi` | ✓ |
+| PLUS_DM / MINUS_DM | `Adx.PlusDm` / `Adx.MinusDm` | ✓ |
+| DX | `Adx.Dx` | ✓ |
+| STOCHRSI | `StochRsi.Latest` / `StochRsiSeries` | ✓ (2.1e-13) |
+| TRIX | `Trix.Latest` / `TrixSeries` | ✓ (bit-exact) |
+| BOP, CCI, MFI, ULTOSC | — | |
 
 ## Volatility indicators
 
@@ -85,11 +98,21 @@ transform family, MAMA/FAMA, and the 61 candlestick patterns.
 
 ## Streaming
 
-O(1) `Init`/`Next` state exists for 13 families: SMA, EMA, WMA, RMA,
-StdDev, BBands, RSI, ATR, MACD, fast %K, slow %K/%D, Williams %R and
-the Donchian channels. Every streamed series continues its batch series
-bit for bit (asserted exactly in `StreamingTests`), and the streaming
-rows of the audit match the C library with the same figures as their
-batch twins.
+O(1) `Init`/`Next` state exists for 14 families: SMA, EMA, WMA, RMA,
+StdDev, BBands, RSI, ATR, MACD, fast %K, slow %K/%D, Williams %R, the
+Donchian channels and Aroon. Every streamed series continues its batch
+series bit for bit (asserted exactly in `StreamingTests`), and the
+streaming rows of the audit match the C library with the same figures as
+their batch twins.
 
-**Summary: 21 of 133 functions.**
+## Divergences from the Elixir reference
+
+Two 0.3.0 families follow the TA-Lib C library where the Elixir
+reference (whose audit never dumped them) diverges: CMO (TA-Lib uses
+Wilder-smoothed averages — exactly `2 * RSI - 100` — not sliding-window
+sums) and SAR (trend seeded from +DM/-DM, first bar consumed as the
+second bar's stop, `fma` stop arithmetic, the C code's first-iteration
+clamp). Both are bit-exact here; the Elixir library is worth the same
+upstream fix.
+
+**Summary: 40 of 133 functions** (plus Keltner, beyond the TA-Lib list).

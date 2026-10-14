@@ -152,6 +152,29 @@ def main():
         # Donchian channels run over the bars' highs and lows.
         "stream_donchian_upper": talib.MAX(high, 20),
         "stream_donchian_lower": talib.MIN(low, 20),
+        # 0.3.0 families. Aroon runs over the close series itself, so the
+        # TA-Lib reference gets high = low = close = prices. Keltner has
+        # no standalone TA-Lib function: composed from EMA and ATR.
+        "aroon_up": talib.AROON(p, p, timeperiod=14)[1],
+        "aroon_down": talib.AROON(p, p, timeperiod=14)[0],
+        "stochrsi": talib.STOCHRSI(prices, timeperiod=14, fastk_period=5, fastd_period=3)[0],
+        "trix": talib.TRIX(prices, 14),
+        "cmo": talib.CMO(prices, 14),
+        "apo": talib.APO(prices, fastperiod=12, slowperiod=26, matype=1),
+        "ppo": talib.PPO(prices, fastperiod=12, slowperiod=26, matype=1),
+        "sar": talib.SAR(high, low, acceleration=0.02, maximum=0.2),
+        "keltner_middle": talib.EMA(close, 20),
+        "keltner_upper": talib.EMA(close, 20) + 2 * talib.ATR(high, low, close, 20),
+        "keltner_lower": talib.EMA(close, 20) - 2 * talib.ATR(high, low, close, 20),
+        # The ADX family is scalar-only here; the rows carry the latest
+        # value, compared against TA-Lib's last defined output.
+        "adx_last": talib.ADX(high, low, close, 14)[-1:],
+        "plus_di_last": talib.PLUS_DI(high, low, close, 14)[-1:],
+        "minus_di_last": talib.MINUS_DI(high, low, close, 14)[-1:],
+        "dx_last": talib.DX(high, low, close, 14)[-1:],
+        "adxr_last": talib.ADXR(high, low, close, 14)[-1:],
+        "stream_aroon_up": talib.AROON(p, p, timeperiod=14)[1],
+        "stream_aroon_down": talib.AROON(p, p, timeperiod=14)[0],
     }
 
     failures = 0
