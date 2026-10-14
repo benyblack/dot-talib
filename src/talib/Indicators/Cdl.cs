@@ -177,7 +177,7 @@ public static partial class Cdl
     result[n] = seed;
     for (int k = n + 1; k < values.Length; k++)
     {
-      result[k] = result[k - 1] + (values[k] - values[k - n]);
+      result[k] = result[k - 1] + (values[k - 1] - values[k - 1 - n]);
     }
 
     return result;
