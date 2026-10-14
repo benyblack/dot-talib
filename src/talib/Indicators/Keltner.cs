@@ -19,7 +19,7 @@ public static class Keltner
   /// <param name="Upper">The upper channel: <c>Middle + mult * ATR</c>.</param>
   /// <param name="Middle">The middle channel: the EMA of the closes.</param>
   /// <param name="Lower">The lower channel: <c>Middle - mult * ATR</c>.</param>
-  public sealed record KeltnerResult(double Upper, double Middle, double Lower);
+  public readonly record struct KeltnerResult(double Upper, double Middle, double Lower);
 
   /// <summary>Calculates the latest Keltner Channels.</summary>
   /// <param name="bars">Bars, oldest first.</param>

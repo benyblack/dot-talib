@@ -58,26 +58,26 @@ var rows = new List<(string Name, IEnumerable<double?> Values)>
     ("rsi", Rsi.RsiSeries(prices, 14)),
     ("macd_line", Macd.MacdSeries(prices, 12, 26)),
     ("macd_signal", MacdSignal(prices)),
-    ("bbands_upper", Bbands.BbandsSeries(prices, 20, 2).Select(b => (double?)b?.Upper)),
-    ("bbands_middle", Bbands.BbandsSeries(prices, 20, 2).Select(b => (double?)b?.Middle)),
-    ("bbands_lower", Bbands.BbandsSeries(prices, 20, 2).Select(b => (double?)b?.Lower)),
+    ("bbands_upper", Bbands.BbandsSeries(prices, 20, 2).Select(b => b.HasValue ? b.Value.Upper : (double?)null)),
+    ("bbands_middle", Bbands.BbandsSeries(prices, 20, 2).Select(b => b.HasValue ? b.Value.Middle : (double?)null)),
+    ("bbands_lower", Bbands.BbandsSeries(prices, 20, 2).Select(b => b.HasValue ? b.Value.Lower : (double?)null)),
     ("stoch_fastk", Stochastic.KSeries(prices, 14)),
     ("williams_r", WilliamsR.WilliamsRSeries(prices, 14)),
     ("midpoint", Ma.MidpointSeries(prices, 20)),
     ("stddev", StdDev.StdDevSeries(prices, 20)),
     ("atr", Atr.AtrSeries(bars, 14)),
     ("obv", Obv.ObvSeries(bars)),
-    ("aroon_up", Aroon.AroonSeries(prices, 14).Select(a => (double?)a?.Up)),
-    ("aroon_down", Aroon.AroonSeries(prices, 14).Select(a => (double?)a?.Down)),
+    ("aroon_up", Aroon.AroonSeries(prices, 14).Select(a => a.HasValue ? a.Value.Up : (double?)null)),
+    ("aroon_down", Aroon.AroonSeries(prices, 14).Select(a => a.HasValue ? a.Value.Down : (double?)null)),
     ("stochrsi", StochRsi.StochRsiSeries(prices, 14, 5)),
     ("trix", Trix.TrixSeries(prices, 14)),
     ("cmo", Cmo.CmoSeries(prices, 14)),
     ("apo", Apo.ApoSeries(prices, 12, 26)),
     ("ppo", Ppo.PpoSeries(prices, 12, 26)),
     ("sar", Sar.SarSeries(bars, 0.02, 0.02, 0.2)),
-    ("keltner_upper", Keltner.KeltnerSeries(bars, 20, 2).Select(k => (double?)k?.Upper)),
-    ("keltner_middle", Keltner.KeltnerSeries(bars, 20, 2).Select(k => (double?)k?.Middle)),
-    ("keltner_lower", Keltner.KeltnerSeries(bars, 20, 2).Select(k => (double?)k?.Lower)),
+    ("keltner_upper", Keltner.KeltnerSeries(bars, 20, 2).Select(k => k.HasValue ? k.Value.Upper : (double?)null)),
+    ("keltner_middle", Keltner.KeltnerSeries(bars, 20, 2).Select(k => k.HasValue ? k.Value.Middle : (double?)null)),
+    ("keltner_lower", Keltner.KeltnerSeries(bars, 20, 2).Select(k => k.HasValue ? k.Value.Lower : (double?)null)),
     // The ADX family is scalar-only in the reference library; each row
     // carries the latest value, compared against TA-Lib's last output.
     ("adx_last", new[] { Adx.Latest(bars, 14) }),
@@ -230,9 +230,9 @@ static IEnumerable<(string Name, IEnumerable<double?> Values)> StreamingRows(dou
   yield return ("stream_wma", Stream(prices, h => Ma.WmaInit(h, 20), Ma.WmaNext));
   yield return ("stream_rma", Stream(prices, h => Ma.RmaInit(h, 20), Ma.RmaNext));
   yield return ("stream_stddev", Stream(prices, h => StdDev.StdDevInit(h, 20), StdDev.StdDevNext));
-  yield return ("stream_bbands_upper", bbands.Values.Select(b => (double?)b?.Upper).Concat(bbandsExt.Select(b => b?.Upper)));
-  yield return ("stream_bbands_middle", bbands.Values.Select(b => (double?)b?.Middle).Concat(bbandsExt.Select(b => b?.Middle)));
-  yield return ("stream_bbands_lower", bbands.Values.Select(b => (double?)b?.Lower).Concat(bbandsExt.Select(b => b?.Lower)));
+  yield return ("stream_bbands_upper", bbands.Values.Select(b => b.HasValue ? b.Value.Upper : (double?)null).Concat(bbandsExt.Select(b => b.HasValue ? b.Value.Upper : (double?)null)));
+  yield return ("stream_bbands_middle", bbands.Values.Select(b => b.HasValue ? b.Value.Middle : (double?)null).Concat(bbandsExt.Select(b => b.HasValue ? b.Value.Middle : (double?)null)));
+  yield return ("stream_bbands_lower", bbands.Values.Select(b => b.HasValue ? b.Value.Lower : (double?)null).Concat(bbandsExt.Select(b => b.HasValue ? b.Value.Lower : (double?)null)));
   yield return ("stream_rsi", Stream(prices, h => Rsi.RsiInit(h, 14), Rsi.RsiNext));
   yield return ("stream_atr", Stream(bars, h => Atr.AtrInit(h, 14), Atr.AtrNext));
   yield return ("stream_macd", macd.Values.Macd.Concat(macdExt.Select(e => e.Macd)));
@@ -241,11 +241,11 @@ static IEnumerable<(string Name, IEnumerable<double?> Values)> StreamingRows(dou
   yield return ("stream_stoch_fastk", Stream(prices, h => Stochastic.KInit(h, 14), Stochastic.KNext));
   yield return ("stream_stoch_slowk", slow.Values.K.Concat(slowExt.Select(e => e.K)));
   yield return ("stream_stoch_slowd", slow.Values.D.Concat(slowExt.Select(e => e.D)));
-  yield return ("stream_aroon_up", aroon.Values.Select(a => (double?)a?.Up).Concat(aroonExt.Select(a => a?.Up)));
-  yield return ("stream_aroon_down", aroon.Values.Select(a => (double?)a?.Down).Concat(aroonExt.Select(a => a?.Down)));
+  yield return ("stream_aroon_up", aroon.Values.Select(a => a.HasValue ? a.Value.Up : (double?)null).Concat(aroonExt.Select(a => a.HasValue ? a.Value.Up : (double?)null)));
+  yield return ("stream_aroon_down", aroon.Values.Select(a => a.HasValue ? a.Value.Down : (double?)null).Concat(aroonExt.Select(a => a.HasValue ? a.Value.Down : (double?)null)));
   yield return ("stream_williams_r", Stream(prices, h => WilliamsR.WilliamsRInit(h, 14), WilliamsR.WilliamsRNext));
-  yield return ("stream_donchian_upper", donchian.Select(d => (double?)d?.Upper));
-  yield return ("stream_donchian_lower", donchian.Select(d => (double?)d?.Lower));
+  yield return ("stream_donchian_upper", donchian.Select(d => d.HasValue ? d.Value.Upper : (double?)null));
+  yield return ("stream_donchian_lower", donchian.Select(d => d.HasValue ? d.Value.Lower : (double?)null));
 }
 
 static Bar[] CdlBars(int size, int seed)

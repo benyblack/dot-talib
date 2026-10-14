@@ -29,7 +29,7 @@ public class BbandsTests
     Assert.Null(Bbands.Latest(Prices, 200, 2));
     Assert.Null(Bbands.Latest(Prices, 200));
 
-    var bands = Bbands.Latest(Prices, 20, 2)!;
+    var bands = Bbands.Latest(Prices, 20, 2)!.Value;
     Assert.True(Math.Abs(bands.Upper - 1358.82) < 0.01);
     Assert.True(Math.Abs(bands.Middle - 1279.71) < 0.01);
     Assert.True(Math.Abs(bands.Lower - 1200.61) < 0.01);
@@ -42,8 +42,8 @@ public class BbandsTests
     Assert.Equal(Prices.Length, series.Length);
     Assert.Equal(19, series.Count(v => v is null));
 
-    var last = series[^1]!;
-    var scalar = Bbands.Latest(Prices, 20, 2)!;
+    var last = series[^1]!.Value;
+    var scalar = Bbands.Latest(Prices, 20, 2)!.Value;
     Assert.True(Math.Abs(last.Upper - scalar.Upper) < 1.0e-9);
     Assert.True(Math.Abs(last.Middle - scalar.Middle) < 1.0e-9);
     Assert.True(Math.Abs(last.Lower - scalar.Lower) < 1.0e-9);
@@ -73,7 +73,7 @@ public class BbandsTests
   [Fact]
   public void Batch_matches_the_doctest_walks()
   {
-    var bands = Bbands.Latest(new[] { 1.0, 2, 3, 4, 5 }, 4, 2)!;
+    var bands = Bbands.Latest(new[] { 1.0, 2, 3, 4, 5 }, 4, 2)!.Value;
     Assert.Equal(5.7361, Round(bands.Upper, 4));
     Assert.Equal(3.5, Round(bands.Middle, 4));
     Assert.Equal(1.2639, Round(bands.Lower, 4));
@@ -87,7 +87,7 @@ public class BbandsTests
     var (state, values) = Bbands.BbandsInit(new[] { 1.0, 2, 3, 4, 5 }, 4, 2);
     Assert.Equal(new Bbands.BbandsResult(5.73606797749979, 3.5, 1.2639320225002102), values[^1]!);
 
-    var next = Bbands.BbandsNext(state, 6)!;
+    var next = Bbands.BbandsNext(state, 6)!.Value;
     Assert.Equal(6.7361, Round(next.Upper, 4));
     Assert.Equal(4.5, next.Middle);
     Assert.Equal(2.2639, Round(next.Lower, 4));

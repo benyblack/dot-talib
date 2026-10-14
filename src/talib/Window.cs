@@ -129,4 +129,62 @@ internal static class Window
 
     return (maxIndices, minIndices);
   }
+
+  /// <summary>
+  /// The bar-flavoured twin of <see cref="MaxesMins(double[], int)"/>:
+  /// one (max High, min Low) pair per full window, oldest window
+  /// first, from a single deque walk over the bars (no extracted
+  /// high/low arrays).
+  /// </summary>
+  /// <param name="bars">Bars, oldest first; High and Low are read.</param>
+  /// <param name="period">The window size; the caller guarantees <c>bars.Length >= period</c>.</param>
+  /// <returns>The per-window maxima of the highs and minima of the lows.</returns>
+  public static (double[] Maxes, double[] Mins) MaxesMins(Bar[] bars, int period)
+  {
+    int n = bars.Length;
+    var maxes = new double[n - period + 1];
+    var mins = new double[n - period + 1];
+
+    var maxQ = new int[n];
+    var minQ = new int[n];
+    int maxHead = 0, maxTail = 0, minHead = 0, minTail = 0;
+
+    for (int i = 0; i < n; i++)
+    {
+      double high = bars[i].High;
+      double low = bars[i].Low;
+
+      while (maxHead < maxTail && bars[maxQ[maxTail - 1]].High < high)
+      {
+        maxTail--;
+      }
+
+      while (minHead < minTail && bars[minQ[minTail - 1]].Low > low)
+      {
+        minTail--;
+      }
+
+      maxQ[maxTail++] = i;
+      minQ[minTail++] = i;
+
+      if (maxQ[maxHead] <= i - period)
+      {
+        maxHead++;
+      }
+
+      if (minQ[minHead] <= i - period)
+      {
+        minHead++;
+      }
+
+      if (i >= period - 1)
+      {
+        int k = i - period + 1;
+        maxes[k] = bars[maxQ[maxHead]].High;
+        mins[k] = bars[minQ[minHead]].Low;
+      }
+    }
+
+    return (maxes, mins);
+  }
 }

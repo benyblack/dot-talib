@@ -6,6 +6,40 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-10-14
+
+The performance release: the per-window heap allocations removed,
+behavior preserved (all 269 tests and the full value audit pass bit
+for bit).
+
+### Changed
+
+- The multi-output records (`BbandsResult`, `DonchianResult`,
+  `AroonResult`, `KeltnerResult`, `StochPoint`) are now
+  `readonly record struct`s instead of reference records — a series no
+  longer allocates one heap object per window. **Breaking** only at
+  the C# type level: member access, equality and nullability behave
+  the same, but `SomeResult?` is now a nullable value type (`x is
+  null` still works; `x?.Member` becomes `x.HasValue ? ...`).
+- The CDL candle context is one contiguous struct array (was ~100k
+  small heap objects per context build), and the scoring walk reuses a
+  single scratch window instead of allocating one per scored bar.
+- `Donchian.DonchianSeries` walks the bars once (a new combined
+  `Window.MaxesMins(Bar[], int)` reading High/Low directly) instead of
+  extracting high/low arrays and walking twice.
+
+### Measured (docs/BENCHMARKS.md, best-of-runs before/after)
+
+- Bollinger Bands 1.93 -> 0.53 ms at 100k points (**3.6x**); Donchian
+  2.04 -> 1.27 ms; Stochastic slow 1.92 -> 1.23 ms.
+- Scoring all 61 candlestick patterns one by one: 1.08 s -> 0.52 s
+  (**2x**); `Cdl.Scan` for the whole set unchanged (~74 ms — it always
+  shared one context).
+- The 16-symbol concurrency panel: parallel 102 -> ~65-71 ms (speedup
+  up to **5.7x** on 24 workers).
+- Streaming: Bollinger 0.057 -> 0.048 µs and RSI 0.086 -> 0.043 µs per
+  tick (the per-step record allocations are gone).
+
 ## [0.5.1] - 2026-10-14
 
 The benchmark release: the full suite mirroring the Elixir project's

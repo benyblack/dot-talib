@@ -33,7 +33,7 @@ public class KeltnerTests
   {
     Assert.Null(Keltner.Latest(Bars, 200, 2));
 
-    var channels = Keltner.Latest(Bars, 14, 2)!;
+    var channels = Keltner.Latest(Bars, 14, 2)!.Value;
     Assert.True(Math.Abs(channels.Upper - 1330.0) < 0.01);
     Assert.True(Math.Abs(channels.Middle - 1304.53) < 0.01);
     Assert.True(Math.Abs(channels.Lower - 1279.06) < 0.01);
@@ -64,8 +64,8 @@ public class KeltnerTests
     Assert.Equal(Bars.Length, series.Length);
     Assert.Equal(14, series.Count(v => v is null));
 
-    var last = series[^1]!;
-    var scalar = Keltner.Latest(Bars, 14, 2)!;
+    var last = series[^1]!.Value;
+    var scalar = Keltner.Latest(Bars, 14, 2)!.Value;
     Assert.Equal(scalar.Upper, last.Upper);
     Assert.Equal(scalar.Middle, last.Middle);
     Assert.Equal(scalar.Lower, last.Lower);
@@ -96,7 +96,7 @@ public class KeltnerTests
         new Bar(0, 13, 9, 12, 0),
     };
 
-    var channels = Keltner.Latest(bars, 2, 2)!;
+    var channels = Keltner.Latest(bars, 2, 2)!.Value;
     Assert.Equal(17.3333, Round(channels.Upper, 4));
     Assert.Equal(11.3333, Round(channels.Middle, 4));
     Assert.Equal(5.3333, Round(channels.Lower, 4));

@@ -40,7 +40,7 @@ public class DonchianTests
   {
     Assert.Null(Donchian.Latest(Bars, 200));
 
-    Donchian.DonchianResult channels = Donchian.Latest(Bars, 14)!;
+    Donchian.DonchianResult channels = Donchian.Latest(Bars, 14)!.Value;
     Assert.Equal(1342.0, channels.Upper);
     Assert.Equal(1292.78, Round(channels.Middle, 2));
     Assert.Equal(1243.55, channels.Lower);
