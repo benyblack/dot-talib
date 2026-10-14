@@ -6,6 +6,42 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-14
+
+The core-momentum release: nine more families, and the value audit —
+extended to every new function — earned its keep by catching two real
+divergences inherited from the Elixir reference.
+
+### Added
+
+- ADX/DMI family: +DI, -DI, DX, ADX, ADXR, the combined `AdxAll`, and
+  the raw +DM/-DM series (scalar-only, mirroring the reference).
+- Aroon (up/down, oscillator) with O(1) streaming state — the 14th
+  streaming family — built on a new index-emitting `Window.Extremes`
+  walk (earliest tie wins).
+- Keltner channels (EMA ± mult·ATR), StochRSI, TRIX, CMO, APO, PPO,
+  Parabolic SAR (+ extended), all batch scalar + series.
+- 60 new tests (189 total), golden values ported from the Elixir suite
+  or recorded directly from the TA-Lib C library.
+- The audit now dumps and verifies 14 more rows (ADX family, Aroon
+  batch + streaming, StochRSI, TRIX, CMO, APO, PPO, SAR, Keltner
+  composed from EMA + ATR): all pass — bit-exact for CMO, APO, PPO,
+  TRIX, SAR, Keltner middle and the ADX family's last values, ≤2.1e-13
+  elsewhere (StochRSI), Aroon at 1.7e-16.
+
+### Changed
+
+- **CMO now follows the TA-Lib C library**: Wilder-smoothed average
+  gains/losses (exactly `2 * RSI - 100`), not the textbook
+  sliding-window sums. The Elixir reference diverges here — its audit
+  never dumped CMO — and is worth the same upstream fix.
+- **SAR now follows the TA-Lib C library** (`ta_SAR.c`): the initial
+  trend comes from +DM/-DM between the first two bars (not closes), the
+  first bar is consumed (its low/high is the second bar's SAR), stops
+  are computed with a fused multiply-add and clamped with the C code's
+  first-iteration convention, and reversals reset the acceleration to
+  the start value. The Elixir reference diverges here too.
+
 ## [0.2.0] - 2026-10-14
 
 The revival release. The library slept from 2019 (four indicators,

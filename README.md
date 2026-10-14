@@ -6,23 +6,25 @@ This is a revival of a 2019-era sketch, rebuilt on the conventions proven
 by the [Elixir sister library](https://github.com/benyblack/talib) — whose
 algorithms were verified value-by-value against the real TA-Lib C
 library — and this port re-runs that audit against the C library
-directly (see [Audit](#audit)). 21 of the 133 TA-Lib functions are
-covered so far; see [PARITY.md](PARITY.md) for the function-by-function
-map and the roadmap.
+directly (see [Audit](#audit)). 40 of the 133 TA-Lib functions are
+covered so far, plus Keltner channels (beyond the TA-Lib list); see
+[PARITY.md](PARITY.md) for the function-by-function map and the roadmap.
 
 ## Indicators
 
 - Overlap studies: SMA, EMA (SMA-seeded), WMA, Wilder RMA, DEMA, TEMA,
-  Midpoint, Bollinger Bands, Donchian channels (+ Midprice)
+  Midpoint, Bollinger Bands, Donchian channels (+ Midprice), Parabolic
+  SAR (+ extended), Keltner channels
 - Momentum: RSI (Wilder), MACD (line/signal/histogram, `MacdFix`),
   Stochastic (fast and slow), Williams %R, ROC/ROCP/ROCR/ROCR100,
-  Momentum
+  Momentum, CMO (Wilder), APO, PPO, Aroon (+ oscillator), StochRSI,
+  TRIX, ADX/DMI (+DI, -DI, DX, ADXR, raw DM)
 - Volatility: population StdDev, ATR (+ NATR, True Range)
 - Volume: OBV
 
 Each family comes as a batch scalar (`Latest` — the value at the newest
 point), a batch series (`...Series` — aligned with the input,
-`null`-padded during lookback) and, for 13 families, an O(1)
+`null`-padded during lookback) and, for 14 families, an O(1)
 [streaming](#streaming) state.
 
 ## Installation
@@ -73,10 +75,10 @@ var channels = Donchian.Latest(bars, 20);    // .Upper / .Middle / .Lower
 ## Streaming
 
 Batch functions walk their whole input — the wrong shape for a live
-feed. Thirteen families (the MAs, StdDev, Bollinger Bands, ATR, RSI,
-MACD, Stochastic fast and slow, Williams %R, Donchian) also come as O(1)
-streaming state: warm up once from history, then advance one bar at a
-time.
+feed. Fourteen families (the MAs, StdDev, Bollinger Bands, ATR, RSI,
+MACD, Stochastic fast and slow, Williams %R, Donchian, Aroon) also come
+as O(1) streaming state: warm up once from history, then advance one
+bar at a time.
 
 ```csharp
 // Warm up from history; values equals the batch series exactly
@@ -108,13 +110,21 @@ python bench/compare_audit.py tmp
 
 Verified against TA-Lib 0.8.2: **bit-exact** for SMA, EMA, DEMA, TEMA,
 the MACD line, BBands middle, fast %K, slow %K/%D, Williams %R,
-Midpoint, OBV and both Donchian channels; **max relative error from
-1.5e-14 (WMA) to 4.3e-12 (StdDev)** — the same figure the Elixir
+Midpoint, OBV, both Donchian channels, CMO, APO, PPO, TRIX, SAR,
+Keltner middle and the ADX family's latest values; **max relative error
+from 1.5e-14 (WMA) to 4.3e-12 (StdDev)** — the same figure the Elixir
 library records — for the rest. The streaming rows match with the same
 figures as their batch twins. The MACD line and stochastic rows differ
 only in leading alignment: this library defines outputs from the bar
 where the math starts, so some rows begin earlier than TA-Lib's unified
 outputs; on the shared bars the values agree exactly.
+
+The audit also catches inherited divergences: 0.3.0's extension exposed
+that the Elixir reference's CMO (textbook sums instead of Wilder
+smoothing) and SAR (close-seeded trend, no first-bar consumption)
+differ from the C library — both were rewritten here from the C source
+and are bit-exact (see PARITY.md, "Divergences from the Elixir
+reference").
 
 ## Benchmarks
 
@@ -138,10 +148,11 @@ arrays (plus per-window records for the multi-output families).
 ## Roadmap
 
 Follow the Elixir library toward full TA-Lib parity, in rough order:
-ADX/DMI, Keltner, TRIX/CMO/APO/PPO, StochRSI, Aroon, Parabolic SAR,
 TRIMA/KAMA/T3 (+ MACDEXT, MAVP), statistics and linear regression,
-VWAP/MFI/Chaikin, price transforms, the Hilbert-transform family, and
-the 61 candlestick patterns. Contributions welcome.
+VWAP/MFI/Chaikin, BOP/CCI/Ultimate Oscillator, price transforms, the
+Hilbert-transform family, and the 61 candlestick patterns. The Elixir
+library's CMO and SAR also deserve the upstream fix this library
+already applied (see PARITY.md). Contributions welcome.
 
 ## License
 
