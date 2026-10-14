@@ -17,7 +17,7 @@ namespace Talib.Indicators;
 public static class Stochastic
 {
   /// <summary>The slowed <c>%K</c> and <c>%D</c> values at a single point.</summary>
-  public sealed record StochPoint(double? K, double? D);
+  public readonly record struct StochPoint(double? K, double? D);
 
   /// <summary>The slowed <c>%K</c> and <c>%D</c> series, each aligned with the input prices.</summary>
   public sealed record StochResult(double?[] K, double?[] D);

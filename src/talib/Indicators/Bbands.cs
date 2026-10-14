@@ -16,7 +16,7 @@ public static class Bbands
   /// <param name="Upper">The upper band: <c>Middle + mult * deviation</c>.</param>
   /// <param name="Middle">The middle band: the SMA of the window.</param>
   /// <param name="Lower">The lower band: <c>Middle - mult * deviation</c>.</param>
-  public sealed record BbandsResult(double Upper, double Middle, double Lower);
+  public readonly record struct BbandsResult(double Upper, double Middle, double Lower);
 
   /// <summary>Calculates the latest Bollinger Bands.</summary>
   /// <param name="prices">Prices, oldest first.</param>

@@ -33,12 +33,13 @@ public static partial class Cdl
   }
 
   // The per-bar candle fields plus the trailing average-window sums the
-  // candle settings read.
-  internal sealed class CtxBar
+  // candle settings read. A struct, so a context is one contiguous
+  // allocation and the windows copy by value.
+  internal struct CtxBar
   {
-    internal double O = 0, H = 0, L = 0, C = 0;
-    internal double Body = 0, Up = 0, Lo = 0;
-    internal double Body10 = 0, Hl10 = 0, Shadow10 = 0, Hl5 = 0;
+    internal double O, H, L, C;
+    internal double Body, Up, Lo;
+    internal double Body10, Hl10, Shadow10, Hl5;
   }
 
   // Pattern dispatch: resolved by name through the (Ctx) overloads and
@@ -230,9 +231,13 @@ public static partial class Cdl
   internal static int[] Score(CtxBar[] ctx, int lookback, int window, Func<CtxBar[], int> eval)
   {
     var result = new int[ctx.Length];
+
+    // One scratch window, refilled per bar: the eval callback sees the
+    // window's bars oldest-first, copied by value — no per-bar
+    // allocation.
+    var w = new CtxBar[window];
     for (int k = Math.Max(lookback, window - 1); k < ctx.Length; k++)
     {
-      var w = new CtxBar[window];
       Array.Copy(ctx, k - window + 1, w, 0, window);
       result[k] = eval(w);
     }

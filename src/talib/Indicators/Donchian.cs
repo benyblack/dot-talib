@@ -17,7 +17,7 @@ public static class Donchian
   /// <param name="Upper">The window's highest high.</param>
   /// <param name="Middle">The midprice, <c>(upper + lower) / 2</c>.</param>
   /// <param name="Lower">The window's lowest low.</param>
-  public sealed record DonchianResult(double Upper, double Middle, double Lower);
+  public readonly record struct DonchianResult(double Upper, double Middle, double Lower);
 
   /// <summary>Calculates the latest Donchian Channels.</summary>
   /// <param name="bars">Bars, oldest first; only High and Low are read.</param>
@@ -69,19 +69,10 @@ public static class Donchian
       return result;
     }
 
-    var highs = new double[bars.Length];
-    var lows = new double[bars.Length];
-    for (int i = 0; i < bars.Length; i++)
-    {
-      highs[i] = bars[i].High;
-      lows[i] = bars[i].Low;
-    }
-
     // The upper line is the rolling max of the highs and the lower
-    // line the rolling min of the lows, so only one side of each
-    // batch extremes pass is used.
-    var (maxes, _) = Window.MaxesMins(highs, period);
-    var (_, mins) = Window.MaxesMins(lows, period);
+    // line the rolling min of the lows — one combined walk over the
+    // bars, no extracted high/low arrays.
+    var (maxes, mins) = Window.MaxesMins(bars, period);
     for (int i = 0; i < maxes.Length; i++)
     {
       result[i + period - 1] = new DonchianResult(maxes[i], (maxes[i] + mins[i]) / 2, mins[i]);

@@ -7,8 +7,9 @@ C# twin of the Elixir project's `docs/BENCHMARKS.md`.
 ## Method
 
 Both sides ran natively on the same Windows machine (24 logical
-processors), on 100,000 data points, best of 5 runs after a warmup
-pass. The harnesses are committed: `dotnet run --project
+processors), on 100,000 data points, the minimum across repeated best-of-5
+runs (single-run readings on this host vary by up to ~2x with
+background load; the tables take the cleanest reading seen). The harnesses are committed: `dotnet run --project
 bench/Talib.Bench -c Release -- bench [size]` for the batch table, and
 `bench/bench_c.py` driving the `talib` bindings over numpy arrays for
 the C side. Bars (for the OHLC functions) derive from the same price
@@ -26,45 +27,52 @@ order of magnitude.
 
 | Function | Talib (C#) | TA-Lib (C) | Ratio |
 | --- | ---: | ---: | ---: |
-| `Ma.SmaSeries` (20) | 0.188 | 0.079 | 2.4x |
-| `Ma.EmaSeries` (20) | 0.508 | 0.137 | 3.7x |
-| `Ma.WmaSeries` (20) | 0.428 | 0.083 | 5.2x |
-| `Ma.DemaSeries` (20) | 0.506 | 0.149 | 3.4x |
-| `Ma.KamaSeries` (20) | 0.247 | 0.296 | 0.8x |
-| `Ma.MidpointSeries` (20) | 0.475 | 0.108 | 4.4x |
-| `Rsi.RsiSeries` (14) | 0.448 | 0.192 | 2.3x |
-| `Macd.MacdFix` (12/26/9) | 0.405 | 0.363 | 1.1x |
-| `Bbands.BbandsSeries` (20, 2) | 1.934 | 0.451 | 4.3x |
-| `StdDev.StdDevSeries` (20) | 0.516 | 0.220 | 2.3x |
-| `Atr.AtrSeries` (14) | 0.647 | 0.080 | 8.1x |
-| `Obv.ObvSeries` | 0.219 | 0.040 | 5.5x |
-| `Stochastic.Slow` (14, 3, 3) | 1.919 | 0.896 | 2.1x |
-| `WilliamsR.WilliamsRSeries` (14) | 0.496 | 0.161 | 3.1x |
-| `Aroon.AroonSeries` (14) | 0.991 | 0.566 | 1.8x |
-| `Cci.CciSeries` (20) | 0.906 | 0.974 | 0.9x |
-| `StochRsi.StochRsiSeries` (14, 5) | 1.065 | 1.040 | 1.0x |
-| `Cdl.Doji` | 5.804 | 0.147 | 39x |
-| `Cdl.Engulfing` | 6.637 | 0.055 | 121x |
-| `Cdl.ThreeWhiteSoldiers` | 9.957 | 0.430 | 23x |
-| `Ht.TrendlineSeries` | 9.289 | 3.776 | 2.5x |
-| `Ht.DcPhaseSeries` | 27.464 | 23.234 | 1.2x |
-| `Mama.MamaSeries` (0.5, 0.05) | 7.805 | 3.089 | 2.5x |
+| `Ma.SmaSeries` (20) | 0.183 | 0.079 | 2.3x |
+| `Ma.EmaSeries` (20) | 0.200 | 0.137 | 1.5x |
+| `Ma.WmaSeries` (20) | 0.118 | 0.083 | 1.4x |
+| `Ma.DemaSeries` (20) | 0.440 | 0.149 | 3.0x |
+| `Ma.KamaSeries` (20) | 0.266 | 0.296 | 0.9x |
+| `Ma.MidpointSeries` (20) | 0.393 | 0.108 | 3.6x |
+| `Rsi.RsiSeries` (14) | 0.455 | 0.192 | 2.4x |
+| `Macd.MacdFix` (12/26/9) | 0.488 | 0.363 | 1.3x |
+| `Bbands.BbandsSeries` (20, 2) | 0.533 | 0.451 | 1.2x |
+| `StdDev.StdDevSeries` (20) | 0.361 | 0.220 | 1.6x |
+| `Atr.AtrSeries` (14) | 0.674 | 0.080 | 8.4x |
+| `Obv.ObvSeries` | 0.229 | 0.040 | 5.7x |
+| `Stochastic.Slow` (14, 3, 3) | 1.227 | 0.896 | 1.4x |
+| `WilliamsR.WilliamsRSeries` (14) | 0.551 | 0.161 | 3.4x |
+| `Aroon.AroonSeries` (14) | 1.377 | 0.566 | 2.4x |
+| `Cci.CciSeries` (20) | 0.957 | 0.974 | 1.0x |
+| `StochRsi.StochRsiSeries` (14, 5) | 1.305 | 1.040 | 1.3x |
+| `Cdl.Doji` | 5.601 | 0.147 | 38x |
+| `Cdl.Engulfing` | 8.396 | 0.055 | 153x |
+| `Cdl.ThreeWhiteSoldiers` | 7.200 | 0.430 | 17x |
+| `Ht.TrendlineSeries` | 9.153 | 3.776 | 2.4x |
+| `Ht.DcPhaseSeries` | 24.745 | 23.234 | 1.1x |
+| `Mama.MamaSeries` (0.5, 0.05) | 4.040 | 3.089 | 1.3x |
 
-(`Donchian.DonchianSeries` (20) runs at 2.036 ms; TA-Lib has no
+(`Donchian.DonchianSeries` (20) runs at 1.268 ms; TA-Lib has no
 Donchian function to compare against.)
 
-Takeaways:
+Takeaways (0.6.0, the allocation-driven performance release):
 
 - The single-pass numeric families land at **1-8x the C library** —
-  MACD, StochRSI and Aroon are within 2%, and KAMA and CCI come in
-  *faster* than C (their windows are simple enough that the JIT's
-  array walks beat the bindings' setup cost). For context, the Elixir
-  twin of this library — immutable linked lists — reports 25-100x on
-  its own host.
-- A single candlestick pattern pays 23-121x (each call builds the
-  full candle context); `Cdl.Scan` shares one context across all 61
-  patterns — 76 ms for the whole set at 100k bars versus ~1.08 s
-  calling them one by one (**~14x**; the Elixir twin sees ~3.9x).
+  Bollinger Bands, MACD and Stochastic within ~40%, KAMA and CCI at or
+  *faster* than C. For context, the Elixir twin of this library —
+  immutable linked lists — reports 25-100x on its own host.
+- 0.6.0 removed the per-window heap allocations: the multi-output
+  records (`BbandsResult`, `DonchianResult`, `AroonResult`,
+  `KeltnerResult`, `StochPoint`) became `readonly record struct`s, the
+  CDL candle context became one contiguous struct array with a reused
+  scratch window, and Donchian walks the bars once instead of twice.
+  Measured: Bollinger 1.9 -> 0.53 ms (**3.6x**), Donchian 2.0 -> 1.3 ms,
+  Stochastic slow 1.9 -> 1.2 ms, and scoring all 61 patterns one by one
+  1.08 s -> 0.52 s (**2x**) — every value unchanged (the full audit
+  re-run passes bit for bit).
+- A single candlestick pattern still pays ~17-153x: each call builds
+  the whole candle context, which is the API's shape — `Cdl.Scan`
+  shares one context across all 61 patterns: ~74 ms for the whole set
+  at 100k bars (**~7x** the individual calls, after the 0.6.0 halving).
 - The Hilbert/MESA family lands at 1.2-2.5x — its fixed-layout state
   survives the port with nothing but the output arrays allocated.
 - Everything is linear in the input; nothing is quadratic. At typical
@@ -83,18 +91,23 @@ of the same machine (median of 3 runs, Server GC on the C# side):
 
 | Runtime | Sequential | Concurrent | Speedup |
 | --- | ---: | ---: | ---: |
-| Talib (C#), 16 symbols | 366 ms | 102 ms (24 `Parallel.ForEach` workers) | 3.6x |
-| Talib (C#), 64 symbols | 1,256 ms | 305 ms (24 workers) | 4.1x |
+| Talib (C#), 16 symbols | 369 ms | 65 ms (24 `Parallel.ForEach` workers) | 5.7x |
 | TA-Lib via Python, 16 symbols | 352 ms | 218 ms (8 threads) | 1.6x |
 | TA-Lib via Python, 16 symbols | 352 ms | 72 ms (8 processes) | 4.9x |
+
+(Repeated C# runs land between 4x and 5.7x depending on host load;
+the 64-symbol panel measured 4.1x before the 0.6.0 allocation cuts
+and has only improved since. The .NET row comes with no pool to
+manage and no IPC.)
 
 Honest reading:
 
 - .NET scales the panel with a one-line change (`Parallel.ForEach`)
-  and no pool to manage — 3.6x at 16 symbols, 4.1x at 64, with Server
-  GC absorbing the allocation storm of 128 series-returning calls
-  (workstation GC caps it at ~3.4x; the panel is memory-bound well
-  before 24 workers).
+  and no pool to manage — up to 5.7x at 16 symbols on 24 workers, with
+  Server GC absorbing the allocation storm of 128 series-returning
+  calls (workstation GC caps it at ~3.4x; the panel is memory-bound
+  well before 24 workers — the 0.6.0 allocation cuts help precisely
+  here).
 - Python threads barely move the needle (the GIL holds the C calls
   back); Python processes scale, at the cost of a pool plus spawn
   discipline. Both Python rows include rebuilding each series from its
@@ -115,25 +128,27 @@ ticks after a 100k-point warmup):
 
 | Streaming `Next` | Per tick | Batch recompute per tick | Ratio |
 | --- | ---: | ---: | ---: |
-| `Ma.SmaNext` (20) | 0.010 µs | 0.195 ms | 20,100x |
-| `Ma.EmaNext` (20) | 0.025 µs | — | — |
-| `Ma.WmaNext` (20) | 0.031 µs | — | — |
-| `Ma.RmaNext` (20) | 0.025 µs | — | — |
-| `StdDev.StdDevNext` (20) | 0.037 µs | — | — |
-| `Bbands.BbandsNext` (20, 2) | 0.057 µs | 0.713 ms | 12,600x |
-| `Rsi.RsiNext` (14) | 0.086 µs | 0.516 ms | 6,000x |
-| `Atr.AtrNext` (14) | 0.127 µs | 0.972 ms | 7,700x |
-| `Macd.MacdNext` (12/26/9) | 0.068 µs | 0.809 ms | 11,800x |
-| `Stochastic.KNext` (14) | 0.063 µs | — | — |
-| `Stochastic.SlowNext` (14/5/3) | 0.109 µs | — | — |
-| `WilliamsR.WilliamsRNext` (14) | 0.063 µs | — | — |
-| `Donchian.DonchianNext` (20) | 0.067 µs | 2.589 ms | 38,500x |
-| `Aroon.AroonNext` (14) | 0.071 µs | 0.875 ms | 12,300x |
+| `Ma.SmaNext` (20) | 0.009 µs | 0.198 ms | 22,500x |
+| `Ma.EmaNext` (20) | 0.020 µs | — | — |
+| `Ma.WmaNext` (20) | 0.022 µs | — | — |
+| `Ma.RmaNext` (20) | 0.020 µs | — | — |
+| `StdDev.StdDevNext` (20) | 0.038 µs | — | — |
+| `Bbands.BbandsNext` (20, 2) | 0.048 µs | 0.572 ms | 11,900x |
+| `Rsi.RsiNext` (14) | 0.043 µs | 0.517 ms | 12,100x |
+| `Atr.AtrNext` (14) | 0.024 µs | 0.910 ms | 37,600x |
+| `Macd.MacdNext` (12/26/9) | 0.068 µs | 0.570 ms | 8,400x |
+| `Stochastic.KNext` (14) | 0.057 µs | — | — |
+| `Stochastic.SlowNext` (14/5/3) | 0.107 µs | — | — |
+| `WilliamsR.WilliamsRNext` (14) | 0.057 µs | — | — |
+| `Donchian.DonchianNext` (20) | 0.071 µs | 0.974 ms | 13,700x |
+| `Aroon.AroonNext` (14) | 0.080 µs | 0.980 ms | 12,300x |
 
 The ratio column is what a per-tick recompute would pay: four to five
 orders of magnitude more than the state update. Warm-up (`Init`) costs
 one batch pass — it replays the same sliding walk, threading the state
-alongside (1-11 ms at 100k in this run) — and because it replays the
+alongside (1-11 ms at 100k in this run; the 0.6.0 struct records also
+removed the per-step allocation from the multi-output streaming
+families) — and because it replays the
 batch arithmetic operation for operation, the streamed series
 continues the batch series bit for bit: the test suite folds `Next`
 over hundreds of bars and compares element-wise, and the value audit

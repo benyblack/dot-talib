@@ -18,7 +18,7 @@ namespace Talib.Indicators;
 public static class Aroon
 {
   /// <summary>The Aroon Up / Down values at a single point.</summary>
-  public sealed record AroonResult(double? Up, double? Down);
+  public readonly record struct AroonResult(double? Up, double? Down);
 
   /// <summary>Calculates the latest Aroon Up / Down, over closing prices.</summary>
   /// <param name="prices">Prices, oldest first.</param>
@@ -93,7 +93,7 @@ public static class Aroon
   {
     Guard.Period(period);
     AroonResult? latest = Latest(prices, period);
-    return latest is null ? null : latest.Up - latest.Down;
+    return latest is null ? null : latest.Value.Up - latest.Value.Down;
   }
 
   // ------------------------------------------------------------------

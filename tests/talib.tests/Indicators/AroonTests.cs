@@ -28,7 +28,7 @@ public class AroonTests
   {
     Assert.Null(Aroon.Latest(Prices, 200));
 
-    Aroon.AroonResult latest = Aroon.Latest(Prices, 14)!;
+    Aroon.AroonResult latest = Aroon.Latest(Prices, 14)!.Value;
     Assert.Equal(85.7143, Round(latest.Up, 4));
     Assert.Equal(0.0, Round(latest.Down, 4));
   }
@@ -54,7 +54,7 @@ public class AroonTests
   {
     double[] walk = { 5, 3, 8, 2, 6, 9, 4 };
 
-    Aroon.AroonResult latest = Aroon.Latest(walk, 3)!;
+    Aroon.AroonResult latest = Aroon.Latest(walk, 3)!.Value;
     Assert.Equal(66.66666666666667, latest.Up);
     Assert.Equal(0.0, latest.Down);
 
@@ -73,7 +73,7 @@ public class AroonTests
     // replaces the extreme, so Up counts days since the FIRST 9.
     double[] walk = { 2, 9, 1, 9, 3 };
 
-    Aroon.AroonResult latest = Aroon.Latest(walk, 3)!;
+    Aroon.AroonResult latest = Aroon.Latest(walk, 3)!.Value;
     Assert.Equal(0.0, latest.Up);
     Assert.Equal(33.333333333333336, latest.Down);
 

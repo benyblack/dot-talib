@@ -145,14 +145,14 @@ rest within 1.3e-13).
 
 Full methodology, tables and the concurrency panel live in
 [docs/BENCHMARKS.md](docs/BENCHMARKS.md) — measured against the TA-Lib
-C library on the same host (best of 5, 100k points): the single-pass
-numeric families land at 1-8x the C time (MACD, StochRSI and Aroon
-within 2%; KAMA and CCI faster than C), `Cdl.Scan` scores all 61
-patterns over one shared context at ~14x the cost of calling them
-individually, and the streaming steps cost 0.01-0.13 µs per tick —
-four to five orders of magnitude less than a per-tick recompute. The
-16-symbol concurrency panel scales 3.6x on 24 cores with a one-line
-`Parallel.ForEach`.
+C library on the same host (best of runs, 100k points): the single-pass
+numeric families land at 1-8x the C time (Bollinger, MACD and
+Stochastic within ~40%; KAMA and CCI at or faster than C), `Cdl.Scan`
+scores all 61 patterns over one shared context at ~7x the cost of
+calling them individually, and the streaming steps cost 0.009-0.11 µs
+per tick — four to five orders of magnitude less than a per-tick
+recompute. The 16-symbol concurrency panel scales up to 5.7x on 24
+cores with a one-line `Parallel.ForEach`.
 
 The harnesses are committed and dependency-free:
 
