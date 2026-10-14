@@ -1,15 +1,25 @@
 namespace Talib.Indicators;
 
 /// <summary>
-/// Parabolic SAR (<see href="https://en.wikipedia.org/wiki/Parabolic_SAR">Wikipedia</see>).
+/// Parabolic SAR (<see href="https://en.wikipedia.org/wiki/Parabolic_SAR">Wikipedia</see>),
+/// following the TA-Lib C reference exactly (verified value by value in
+/// the audit).
 ///
-/// The trend starts up when the second close is above the first, and the
-/// acceleration factor starts at <c>afStart</c> (default 0.02), stepping
-/// by <c>afStep</c> (default 0.02) on every new extreme, capped at
-/// <c>afMax</c> (default 0.2). Bars are always given in chronological
-/// order, oldest first, and the series is returned aligned with the
-/// input; values are defined from the second bar on. Only the High, Low
-/// and Close of each bar are read.
+/// The initial trend comes from +DM/-DM between the first two bars (a tie
+/// defaults long); the first bar is consumed — its low (uptrend) or high
+/// (downtrend) is the SAR of the second bar, and the extreme point starts
+/// at the second bar's extreme. The acceleration factor starts at
+/// <c>afStart</c> (default 0.02), stepping by <c>afStep</c> on every new
+/// extreme, capped at <c>afMax</c> (default 0.2); reversals reset it and
+/// output the extreme point. Stops are computed with a fused
+/// multiply-add and clamped against the last two bars' opposite
+/// extremes.
+///
+/// Note: the Elixir reference seeds the trend from closes and uses plain
+/// multiply-add; this implementation follows the C library. Bars are
+/// always given in chronological order, oldest first, and the series is
+/// returned aligned with the input; values are defined from the second
+/// bar on. Only the High and Low of each bar are read.
 /// </summary>
 public static class Sar
 {
@@ -34,9 +44,7 @@ public static class Sar
   ///
   /// Returns an array aligned with <paramref name="bars"/>: the first
   /// entry is <c>null</c> (the trend needs two bars), every later entry
-  /// is the SAR stop for that bar. The stop is clamped against the last
-  /// two bars' opposite extremes, and the trend reverses (resetting the
-  /// stop to the extreme point) when penetrated.
+  /// is the SAR stop for that bar.
   /// </summary>
   /// <param name="bars">Bars, oldest first.</param>
   /// <param name="afStart">Initial acceleration factor (default 0.02).</param>
@@ -45,84 +53,161 @@ public static class Sar
   /// <returns>The null-padded SAR series.</returns>
   public static double?[] SarSeries(Bar[] bars, double afStart = 0.02, double afStep = 0.02, double afMax = 0.2)
   {
-    if (bars.Length == 0)
-    {
-      return Array.Empty<double?>();
-    }
-
     var result = new double?[bars.Length];
-    if (bars.Length == 1)
+    if (bars.Length < 2)
     {
       return result;
     }
 
-    // State: the last two bars, the trend, the SAR stop and the extreme
-    // point. The trend starts up when the second close is above the first.
-    Bar first = bars[0];
-    Bar second = bars[1];
-    bool isUp = second.Close > first.Close;
-    double sar;
+    // The C reference uses one acceleration as both the start/reset value
+    // and the increment, clamped against the maximum; the split API keeps
+    // them separately configurable but clamps the start the same way.
+    double accel = afStart > afMax ? afMax : afStart;
+    double af = accel;
+
+    // Initial direction from +DM/-DM between the first two bars: -DM > 0
+    // means short, anything else (including a tie) long.
+    double upMove = bars[1].High - bars[0].High;
+    double downMove = bars[0].Low - bars[1].Low;
+    bool isLong = !(downMove > upMove && downMove > 0);
+
+    // Consume the first bar: its low (long) or high (short) is the SAR of
+    // the second bar; the extreme point starts at the second bar.
     double ep;
-    if (isUp)
+    double sar;
+    if (isLong)
     {
-      sar = Math.Min(first.Low, second.Low);
-      ep = Math.Max(first.High, second.High);
+      ep = bars[1].High;
+      sar = bars[0].Low;
     }
     else
     {
-      sar = Math.Max(first.High, second.High);
-      ep = Math.Min(first.Low, second.Low);
+      ep = bars[1].Low;
+      sar = bars[0].High;
     }
 
-    result[1] = sar;
-    double af = afStart;
-    for (int i = 2; i < bars.Length; i++)
+    for (int i = 1; i < bars.Length; i++)
     {
-      Bar prev2 = bars[i - 2];
-      Bar prev1 = bars[i - 1];
-      Bar bar = bars[i];
-      if (isUp)
+      // Like the C reference's first-iteration "cheat", the previous bar
+      // is the current bar on the very first pass, so the clamp ranges
+      // start at bar 1 (not bar 0).
+      int prevIdx = Math.Max(i - 1, 1);
+      double prevHigh = bars[prevIdx].High;
+      double prevLow = bars[prevIdx].Low;
+      double newHigh = bars[i].High;
+      double newLow = bars[i].Low;
+
+      if (isLong)
       {
-        double newSar = Math.Min(sar + af * (ep - sar), Math.Min(prev1.Low, prev2.Low));
-        if (bar.Low < newSar)
+        if (newLow <= sar)
         {
-          // Reversal: the stop jumps to the extreme point, the trend
-          // flips and the acceleration resets to the step.
-          result[i] = ep;
-          isUp = false;
+          // Switch to short: output the extreme point, clamped into the
+          // last two bars' highs, then restart from the new low.
+          isLong = false;
           sar = ep;
-          ep = bar.High;
-          af = afStep;
+          if (sar < prevHigh)
+          {
+            sar = prevHigh;
+          }
+
+          if (sar < newHigh)
+          {
+            sar = newHigh;
+          }
+
+          result[i] = sar;
+          af = accel;
+          ep = newLow;
+          sar = Math.FusedMultiplyAdd(af, ep - sar, sar);
+          if (sar < prevHigh)
+          {
+            sar = prevHigh;
+          }
+
+          if (sar < newHigh)
+          {
+            sar = newHigh;
+          }
         }
         else
         {
-          (double newEp, double newAf) = Accelerate(bar.High, ep, af, afStep, afMax);
-          sar = newSar;
-          ep = newEp;
-          af = newAf;
-          result[i] = newSar;
+          // No switch: output the stop calculated last iteration, then
+          // advance the extreme and acceleration.
+          result[i] = sar;
+          if (newHigh > ep)
+          {
+            ep = newHigh;
+            af += afStep;
+            if (af > afMax)
+            {
+              af = afMax;
+            }
+          }
+
+          sar = Math.FusedMultiplyAdd(af, ep - sar, sar);
+          if (sar > prevLow)
+          {
+            sar = prevLow;
+          }
+
+          if (sar > newLow)
+          {
+            sar = newLow;
+          }
+        }
+      }
+      else if (newHigh >= sar)
+      {
+        // Switch to long: output the extreme point, clamped into the
+        // last two bars' lows, then restart from the new high.
+        isLong = true;
+        sar = ep;
+        if (sar > prevLow)
+        {
+          sar = prevLow;
+        }
+
+        if (sar > newLow)
+        {
+          sar = newLow;
+        }
+
+        result[i] = sar;
+        af = accel;
+        ep = newHigh;
+        sar = Math.FusedMultiplyAdd(af, ep - sar, sar);
+        if (sar > prevLow)
+        {
+          sar = prevLow;
+        }
+
+        if (sar > newLow)
+        {
+          sar = newLow;
         }
       }
       else
       {
-        double newSar = Math.Max(sar + af * (ep - sar), Math.Max(prev1.High, prev2.High));
-        if (bar.High > newSar)
+        result[i] = sar;
+        if (newLow < ep)
         {
-          // Reversal: the stop jumps to the extreme point, the trend
-          // flips and the acceleration resets to the step.
-          result[i] = ep;
-          isUp = true;
-          sar = ep;
-          ep = bar.Low;
-          af = afStep;
+          ep = newLow;
+          af += afStep;
+          if (af > afMax)
+          {
+            af = afMax;
+          }
         }
-        else
+
+        sar = Math.FusedMultiplyAdd(af, ep - sar, sar);
+        if (sar < prevHigh)
         {
-          (double newEp, double newAf) = Decelerate(bar.Low, ep, af, afStep, afMax);
-          sar = newSar;
-          ep = newEp;
-          af = newAf;
-          result[i] = newSar;
+          sar = prevHigh;
+        }
+
+        if (sar < newHigh)
+        {
+          sar = newHigh;
         }
       }
     }
@@ -130,55 +215,21 @@ public static class Sar
     return result;
   }
 
-  private static (double Ep, double Af) Accelerate(double high, double ep, double af, double afStep, double afMax)
-  {
-    if (high > ep)
-    {
-      return (high, Math.Min(af + afStep, afMax));
-    }
-
-    return (ep, af);
-  }
-
-  private static (double Ep, double Af) Decelerate(double low, double ep, double af, double afStep, double afMax)
-  {
-    if (low < ep)
-    {
-      return (low, Math.Min(af + afStep, afMax));
-    }
-
-    return (ep, af);
-  }
-
-  /// <summary>
-  /// The extended Parabolic SAR (TA-Lib SAREXT) with the standard start,
-  /// step and maximum acceleration factors. For example, on the bars
-  /// <c>(10, 9, 9.5), (11, 9.5, 10.5), (12, 10, 11.5)</c> (high, low,
-  /// close) it is <c>9</c>.
-  /// </summary>
+  /// <summary>Calculates the latest extended Parabolic SAR (same defaults as <see cref="Latest"/>).</summary>
   /// <param name="bars">Bars, oldest first.</param>
   /// <param name="afStart">Initial acceleration factor (default 0.02).</param>
   /// <param name="afStep">Acceleration factor increment (default 0.02).</param>
   /// <param name="afMax">Acceleration factor cap (default 0.2).</param>
-  /// <returns>The extended SAR at the latest point, or <c>null</c> when there is not enough data.</returns>
-  public static double? SarExt(Bar[] bars, double afStart = 0.02, double afStep = 0.02, double afMax = 0.2)
-  {
-    var series = SarExtSeries(bars, afStart, afStep, afMax);
-    return series.Length == 0 ? null : series[^1];
-  }
+  /// <returns>The SAR at the latest point, or <c>null</c> when there is not enough data.</returns>
+  public static double? SarExt(Bar[] bars, double afStart = 0.02, double afStep = 0.02, double afMax = 0.2) =>
+      Latest(bars, afStart, afStep, afMax);
 
-  /// <summary>
-  /// The full extended Parabolic SAR (TA-Lib SAREXT) series with the
-  /// standard start, step and maximum acceleration factors — the same
-  /// series as <see cref="SarSeries"/>.
-  /// </summary>
+  /// <summary>Calculates the full extended Parabolic SAR series (same defaults as <see cref="SarSeries"/>).</summary>
   /// <param name="bars">Bars, oldest first.</param>
   /// <param name="afStart">Initial acceleration factor (default 0.02).</param>
   /// <param name="afStep">Acceleration factor increment (default 0.02).</param>
   /// <param name="afMax">Acceleration factor cap (default 0.2).</param>
-  /// <returns>The null-padded extended SAR series.</returns>
-  public static double?[] SarExtSeries(Bar[] bars, double afStart = 0.02, double afStep = 0.02, double afMax = 0.2)
-  {
-    return SarSeries(bars, afStart, afStep, afMax);
-  }
+  /// <returns>The null-padded SAR series.</returns>
+  public static double?[] SarExtSeries(Bar[] bars, double afStart = 0.02, double afStep = 0.02, double afMax = 0.2) =>
+      SarSeries(bars, afStart, afStep, afMax);
 }

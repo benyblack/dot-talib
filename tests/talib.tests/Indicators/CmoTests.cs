@@ -27,7 +27,10 @@ public class CmoTests
   public void Calculate_returns_null_without_enough_data()
   {
     Assert.Null(Cmo.Latest(Prices, 200));
-    Assert.Equal(60.6864, Round(Cmo.Latest(Prices, 14), 4));
+
+    // Wilder-smoothed (TA-Lib) values, recorded from the C library; the
+    // textbook sliding-window CMO would give 60.6864 here instead.
+    Assert.Equal(31.8354, Round(Cmo.Latest(Prices, 14), 4));
   }
 
   [Fact]
@@ -43,9 +46,9 @@ public class CmoTests
   public void Scalar_and_series_match_the_doctest_walks()
   {
     double[] walk = { 1, 2, 3, 4, 3, 5 };
-    Assert.Equal(33.3333, Round(Cmo.Latest(walk, 2), 4));
+    Assert.Equal(66.6667, Round(Cmo.Latest(walk, 2), 4));
 
-    double?[] expected = { null, null, 100.0, 100.0, 0.0, 33.3333 };
+    double?[] expected = { null, null, 100.0, 100.0, 0.0, 66.6667 };
     Assert.Equal(expected, Round(Cmo.CmoSeries(walk, 2), 4));
   }
 

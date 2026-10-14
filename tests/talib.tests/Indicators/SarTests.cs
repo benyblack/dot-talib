@@ -40,7 +40,12 @@ public class SarTests
     double?[] series = Sar.SarSeries(Bars);
     Assert.Equal(Bars.Length, series.Length);
     Assert.Null(series[0]);
-    Assert.Equal(1286.429, Round(series[^1], 4));
+
+    // Recorded from the TA-Lib C library: the first bar is consumed (its
+    // low seeds the second bar's SAR — here 1206.2) and the trend comes
+    // from +DM/-DM, not closes.
+    Assert.Equal(1206.2, Round(series[1], 4));
+    Assert.Equal(1277.2732, Round(series[^1], 4));
     Assert.Equal(Sar.Latest(Bars)!.Value, series[^1]!.Value);
   }
 
@@ -68,8 +73,9 @@ public class SarTests
         new Bar(0, 12, 10, 11.5, 0),
     };
 
-    Assert.Equal(new double?[] { null, 9.0, 9.0 }, Sar.SarSeries(bars));
-    Assert.Equal(9.0, Sar.SarExt(bars));
+    // Values recorded from the TA-Lib C library: 9.04 = 9 + 0.02 * (11 - 9).
+    Assert.Equal(new double?[] { null, 9.0, 9.04 }, Sar.SarSeries(bars));
+    Assert.Equal(9.04, Sar.SarExt(bars));
 
     var walk = bars.Concat(new[]
     {
@@ -78,7 +84,7 @@ public class SarTests
         })
         .ToArray();
 
-    Assert.Equal(9.2352, Round(Sar.Latest(walk), 4));
+    Assert.Equal(9.2721, Round(Sar.Latest(walk), 4));
   }
 
   [Fact]
@@ -95,7 +101,7 @@ public class SarTests
     };
 
     double?[] series = Sar.SarSeries(bars);
-    Assert.Equal(new double?[] { null, 9.0, 9.0, 12.0 }, series);
+    Assert.Equal(new double?[] { null, 9.0, 9.04, 12.0 }, series);
     Assert.Equal(12.0, Sar.Latest(bars));
   }
 
