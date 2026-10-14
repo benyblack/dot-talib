@@ -67,6 +67,24 @@ var rows = new List<(string Name, IEnumerable<double?> Values)>
     ("stddev", StdDev.StdDevSeries(prices, 20)),
     ("atr", Atr.AtrSeries(bars, 14)),
     ("obv", Obv.ObvSeries(bars)),
+    ("aroon_up", Aroon.AroonSeries(prices, 14).Select(a => (double?)a?.Up)),
+    ("aroon_down", Aroon.AroonSeries(prices, 14).Select(a => (double?)a?.Down)),
+    ("stochrsi", StochRsi.StochRsiSeries(prices, 14, 5)),
+    ("trix", Trix.TrixSeries(prices, 14)),
+    ("cmo", Cmo.CmoSeries(prices, 14)),
+    ("apo", Apo.ApoSeries(prices, 12, 26)),
+    ("ppo", Ppo.PpoSeries(prices, 12, 26)),
+    ("sar", Sar.SarSeries(bars, 0.02, 0.02, 0.2)),
+    ("keltner_upper", Keltner.KeltnerSeries(bars, 20, 2).Select(k => (double?)k?.Upper)),
+    ("keltner_middle", Keltner.KeltnerSeries(bars, 20, 2).Select(k => (double?)k?.Middle)),
+    ("keltner_lower", Keltner.KeltnerSeries(bars, 20, 2).Select(k => (double?)k?.Lower)),
+    // The ADX family is scalar-only in the reference library; each row
+    // carries the latest value, compared against TA-Lib's last output.
+    ("adx_last", new[] { Adx.Latest(bars, 14) }),
+    ("plus_di_last", new[] { Adx.PlusDi(bars, 14) }),
+    ("minus_di_last", new[] { Adx.MinusDi(bars, 14) }),
+    ("dx_last", new[] { Adx.Dx(bars, 14) }),
+    ("adxr_last", new[] { Adx.Adxr(bars, 14) }),
 };
 rows.AddRange(StreamingRows(prices, bars));
 
@@ -107,6 +125,9 @@ static IEnumerable<(string Name, IEnumerable<double?> Values)> StreamingRows(dou
       .Concat(bars[split..].Select(b => Donchian.DonchianNext(donchianWarm.State, b)))
       .ToArray();
 
+  var aroon = Aroon.AroonInit(prices[..split], 14);
+  var aroonExt = prices[split..].Select(p => Aroon.AroonNext(aroon.State, p)).ToArray();
+
   var bbands = Bbands.BbandsInit(prices[..split], 20, 2);
   var bbandsExt = prices[split..].Select(p => Bbands.BbandsNext(bbands.State, p)).ToArray();
 
@@ -132,6 +153,8 @@ static IEnumerable<(string Name, IEnumerable<double?> Values)> StreamingRows(dou
   yield return ("stream_stoch_fastk", Stream(prices, h => Stochastic.KInit(h, 14), Stochastic.KNext));
   yield return ("stream_stoch_slowk", slow.Values.K.Concat(slowExt.Select(e => e.K)));
   yield return ("stream_stoch_slowd", slow.Values.D.Concat(slowExt.Select(e => e.D)));
+  yield return ("stream_aroon_up", aroon.Values.Select(a => (double?)a?.Up).Concat(aroonExt.Select(a => a?.Up)));
+  yield return ("stream_aroon_down", aroon.Values.Select(a => (double?)a?.Down).Concat(aroonExt.Select(a => a?.Down)));
   yield return ("stream_williams_r", Stream(prices, h => WilliamsR.WilliamsRInit(h, 14), WilliamsR.WilliamsRNext));
   yield return ("stream_donchian_upper", donchian.Select(d => (double?)d?.Upper));
   yield return ("stream_donchian_lower", donchian.Select(d => (double?)d?.Lower));
