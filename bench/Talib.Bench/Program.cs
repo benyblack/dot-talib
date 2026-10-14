@@ -1,16 +1,37 @@
-// Performance benchmarks: batch series at 100k points and the O(1)
-// streaming steps, on the same deterministic fixture shape the audit
-// uses. Run with:
+// Benchmark harness. Three dependency-free modes mirror the Elixir
+// project's bench/ scripts (same jobs, same fixtures, same statistics);
+// with no mode argument, the BenchmarkDotNet suite runs instead:
 //
-//     dotnet run --project bench/Talib.Bench -c Release
-//     dotnet run --project bench/Talib.Bench -c Release -- --filter *Streaming*
+//     dotnet run --project bench/Talib.Bench -c Release -- bench [size]
+//     dotnet run --project bench/Talib.Bench -c Release -- stream [size]
+//     dotnet run --project bench/Talib.Bench -c Release -- panel [series-count]
 
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Running;
 using Talib;
 using Talib.Indicators;
 
+if (args.Length > 0 && args[0] is "bench" or "stream" or "panel")
+{
+  int size = args.Length > 1 && args[0] != "panel" ? int.Parse(args[1]) : 100_000;
+  switch (args[0])
+  {
+    case "bench":
+      Talib.Bench.BenchBatch.Run(size);
+      break;
+    case "stream":
+      Talib.Bench.BenchStream.Run(size);
+      break;
+    case "panel":
+      Talib.Bench.BenchPanel.Run(args.Length > 1 ? int.Parse(args[1]) : 16);
+      break;
+  }
+
+  return 0;
+}
+
 BenchmarkSwitcher.FromAssembly(typeof(Program).Assembly).Run(args);
+return 0;
 
 [MemoryDiagnoser]
 public class BatchBenchmarks
