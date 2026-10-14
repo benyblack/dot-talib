@@ -6,6 +6,34 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-10-14
+
+The full-parity release: **133 of 133 TA-Lib functions**, every one
+dumped by the audit and verified against the real C library.
+
+### Added
+
+- The Hilbert-transform family (`Ht`): trendline, DC period, DC phase,
+  phasor, sine (+ lead) and trend mode — the MESA core ported stage for
+  stage (multistage WMA warmup, odd/even transformer stages,
+  smooth-price ring, scan/align warmup suppression), with every constant
+  computed by the reference's exact expression shape.
+- MAMA/FAMA (`Mama.MamaSeries`) with the fast/slow limit validation.
+- All 61 candlestick patterns via `Cdl`, scored per bar with TA-Lib's
+  levels — including the ±200 hikkake confirmations and ±80 equal-touch
+  scores most reimplementations skip — plus `Cdl.Context`/`Cdl.Scan` for
+  scoring many patterns over one shared candle context.
+- 17 new tests (269 total). The audit now covers **every function**:
+  all 61 patterns are integer-exact bar for bar on the pseudo-random
+  candle fixture, HT trendline and trend mode are bit-exact, the rest
+  of the Hilbert family within 1.3e-13, MAMA/FAMA at 6e-16.
+
+### Fixed
+
+- The CDL trailing-sum window slid one bar late (drifting the
+  candle-setting averages); caught by the tolerance-sensitive patterns
+  of the final pattern batch before release, not by the exemplar tests.
+
 ## [0.4.0] - 2026-10-14
 
 The statistics-volume release: the moving-average family completed,

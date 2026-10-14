@@ -6,11 +6,9 @@ This is a revival of a 2019-era sketch, rebuilt on the conventions proven
 by the [Elixir sister library](https://github.com/benyblack/talib) — whose
 algorithms were verified value-by-value against the real TA-Lib C
 library — and this port re-runs that audit against the C library
-directly (see [Audit](#audit)). 64 of the 133 TA-Lib functions are
-covered — the momentum, volatility, volume, statistic and price-transform
-groups are complete — plus Keltner channels and rolling VWAP (beyond the
-TA-Lib list); see [PARITY.md](PARITY.md) for the function-by-function map
-and the roadmap.
+directly (see [Audit](#audit)). **All 133 TA-Lib functions are
+covered** — see [PARITY.md](PARITY.md) for the function-by-function map
+with each function's agreement figure.
 
 ## Indicators
 
@@ -28,6 +26,12 @@ and the roadmap.
 - Statistics: linear regression (value/slope/intercept/angle), time
   series forecast, Beta (returns-based), Correlation
 - Price transform: average, median, typical, weighted close
+- Cycles: the full Hilbert-transform family (trendline, DC period/phase,
+  phasor, sine, trend mode) and MAMA/FAMA
+- Candlestick patterns: all 61 TA-Lib CDL functions via `Cdl`, scored
+  per bar (+100 bullish / -100 bearish / 0, with TA-Lib's ±200 hikkake
+  confirmations and ±80 equal-touch levels), integer-exact against the
+  C library; `Cdl.Scan` scores many patterns over one shared context
 
 Each family comes as a batch scalar (`Latest` — the value at the newest
 point), a batch series (`...Series` — aligned with the input,
@@ -128,11 +132,14 @@ rows begin earlier than TA-Lib's unified outputs; on the shared bars
 the values agree exactly.
 
 The audit also catches inherited divergences from the Elixir reference
-(whose audit never dumped these functions): CMO and SAR in 0.3.0, and
+(whose audit never dumped those functions): CMO and SAR in 0.3.0, and
 Beta (TA-Lib regresses returns, not prices) and the Chaikin oscillator
 (EMA over the cumulative A/D line, not the flows) in 0.4.0 — all four
 rewritten here from the C source and verified (see PARITY.md,
-"Divergences from the Elixir reference").
+"Divergences from the Elixir reference"). Since 0.5.0 the audit dumps
+every one of the 133 functions, including all 61 candlestick patterns
+(integer-exact) and the full Hilbert family (trendline bit-exact, the
+rest within 1.3e-13).
 
 ## Benchmarks
 
@@ -155,11 +162,12 @@ arrays (plus per-window records for the multi-output families).
 
 ## Roadmap
 
-The Hilbert-transform cycle family (plus MAMA/FAMA) and the 61
-candlestick patterns are all that remain toward full TA-Lib parity.
-The Elixir library also deserves the four upstream fixes this library
-already applied — CMO, SAR, Beta and the Chaikin oscillator (see
-PARITY.md). Contributions welcome.
+Full TA-Lib parity is done. Next candidates: publishing to NuGet, and
+streaming state for more families (the Hilbert walk is inherently
+stateful, so `Ht`/`Mama` streaming would be a natural fit). The Elixir
+library also deserves the four upstream fixes this library already
+applied — CMO, SAR, Beta and the Chaikin oscillator (see PARITY.md).
+Contributions welcome.
 
 ## License
 

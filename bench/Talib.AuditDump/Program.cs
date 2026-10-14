@@ -112,7 +112,20 @@ var rows = new List<(string Name, IEnumerable<double?> Values)>
     ("macdext_macd_last", new[] { Macd.MacdExt(prices, 12, 26, 9, MaType.Wma).Macd }),
     ("macdext_signal_last", new[] { Macd.MacdExt(prices, 12, 26, 9, MaType.Wma).Signal }),
     ("macdext_histogram_last", new[] { Macd.MacdExt(prices, 12, 26, 9, MaType.Wma).Histogram }),
-};
+    // 0.5.0: the Hilbert-transform family, MAMA/FAMA, and the 61
+    // candlestick patterns over the LCG candle fixture (scored through
+    // one shared context, like Cdl.Scan).
+    ("ht_trendline", Ht.TrendlineSeries(prices)),
+    ("ht_dcperiod", Ht.DcPeriodSeries(prices)),
+    ("ht_dcphase", Ht.DcPhaseSeries(prices)),
+    ("ht_sine", Ht.SineSeries(prices).Sine),
+    ("ht_sine_lead", Ht.SineSeries(prices).LeadSine),
+    ("ht_phasor_inphase", Ht.PhasorSeries(prices).Inphase),
+    ("ht_phasor_quadrature", Ht.PhasorSeries(prices).Quadrature),
+    ("ht_trendmode", Ht.TrendModeSeries(prices).Select(v => (double?)v)),
+    ("mama", Mama.MamaSeries(prices, 0.5, 0.05).Mama),
+    ("fama", Mama.MamaSeries(prices, 0.5, 0.05).Fama),
+}.Concat(CdlRows(cdlBars)).ToList();
 rows.AddRange(StreamingRows(prices, bars));
 
 string content = string.Join("\n", rows.Select(r => r.Name + "\t" + string.Join(",", r.Values.Select(Fmt)))) + "\n";
@@ -128,6 +141,52 @@ static IEnumerable<double?> MacdSignal(double[] prices)
   double?[] line = Macd.MacdSeries(prices, 12, 26);
   double[] defined = line.Where(v => v.HasValue).Select(v => v!.Value).ToArray();
   return Enumerable.Repeat<double?>(null, 25).Concat(Ma.EmaSeries(defined, 9));
+}
+
+// The 61 candlestick rows: each pattern scored over one shared context
+// (the Scan way), keyed by its TA-Lib function name.
+static IEnumerable<(string Name, IEnumerable<double?> Values)> CdlRows(Bar[] bars)
+{
+  var names = new (string Method, string Cdln)[]
+  {
+      ("TwoCrows", "CDL2CROWS"), ("ThreeBlackCrows", "CDL3BLACKCROWS"),
+      ("ThreeInside", "CDL3INSIDE"), ("ThreeLineStrike", "CDL3LINESTRIKE"),
+      ("ThreeOutside", "CDL3OUTSIDE"), ("ThreeStarsInSouth", "CDL3STARSINSOUTH"),
+      ("ThreeWhiteSoldiers", "CDL3WHITESOLDIERS"), ("AbandonedBaby", "CDLABANDONEDBABY"),
+      ("AdvanceBlock", "CDLADVANCEBLOCK"), ("BeltHold", "CDLBELTHOLD"),
+      ("Breakaway", "CDLBREAKAWAY"), ("ClosingMarubozu", "CDLCLOSINGMARUBOZU"),
+      ("ConcealBabysWall", "CDLCONCEALBABYSWALL"), ("Counterattack", "CDLCOUNTERATTACK"),
+      ("DarkCloudCover", "CDLDARKCLOUDCOVER"), ("Doji", "CDLDOJI"),
+      ("DojiStar", "CDLDOJISTAR"), ("DragonflyDoji", "CDLDRAGONFLYDOJI"),
+      ("Engulfing", "CDLENGULFING"), ("EveningDojiStar", "CDLEVENINGDOJISTAR"),
+      ("EveningStar", "CDLEVENINGSTAR"), ("GapSideSideWhite", "CDLGAPSIDESIDEWHITE"),
+      ("GravestoneDoji", "CDLGRAVESTONEDOJI"), ("Hammer", "CDLHAMMER"),
+      ("HangingMan", "CDLHANGINGMAN"), ("Harami", "CDLHARAMI"),
+      ("HaramiCross", "CDLHARAMICROSS"), ("HighWave", "CDLHIGHWAVE"),
+      ("Hikkake", "CDLHIKKAKE"), ("HikkakeMod", "CDLHIKKAKEMOD"),
+      ("HomingPigeon", "CDLHOMINGPIGEON"), ("Identical3Crows", "CDLIDENTICAL3CROWS"),
+      ("InNeck", "CDLINNECK"), ("InvertedHammer", "CDLINVERTEDHAMMER"),
+      ("Kicking", "CDLKICKING"), ("KickingByLength", "CDLKICKINGBYLENGTH"),
+      ("LadderBottom", "CDLLADDERBOTTOM"), ("LongLeggedDoji", "CDLLONGLEGGEDDOJI"),
+      ("LongLine", "CDLLONGLINE"), ("Marubozu", "CDLMARUBOZU"),
+      ("MatchingLow", "CDLMATCHINGLOW"), ("MatHold", "CDLMATHOLD"),
+      ("MorningDojiStar", "CDLMORNINGDOJISTAR"), ("MorningStar", "CDLMORNINGSTAR"),
+      ("OnNeck", "CDLONNECK"), ("Piercing", "CDLPIERCING"),
+      ("RickshawMan", "CDLRICKSHAWMAN"), ("RiseFall3Methods", "CDLRISEFALL3METHODS"),
+      ("SeparatingLines", "CDLSEPARATINGLINES"), ("ShootingStar", "CDLSHOOTINGSTAR"),
+      ("ShortLine", "CDLSHORTLINE"), ("SpinningTop", "CDLSPINNINGTOP"),
+      ("StalledPattern", "CDLSTALLEDPATTERN"), ("StickSandwich", "CDLSTICKSANDWICH"),
+      ("Takuri", "CDLTAKURI"), ("TasukiGap", "CDLTASUKIGAP"),
+      ("Thrusting", "CDLTHRUSTING"), ("Tristar", "CDLTRISTAR"),
+      ("Unique3River", "CDLUNIQUE3RIVER"), ("UpsideGap2Crows", "CDLUPSIDEGAP2CROWS"),
+      ("XsideGap3Methods", "CDLXSIDEGAP3METHODS"),
+  };
+
+  var scores = Cdl.Scan(bars);
+  foreach (var (method, cdln) in names)
+  {
+    yield return (cdln, scores[method].Select(v => (double?)v));
+  }
 }
 
 static double[] Opens(Bar[] bars) => bars.Select(b => b.Open).ToArray();

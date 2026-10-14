@@ -111,6 +111,11 @@ def main():
     low = np.array([b[2] for b in bars])
     close = np.array([b[3] for b in bars])
     volume = np.array([b[4] for b in bars])
+    cdl_bars = load_bars(outdir / "talib_cdl_bars.txt")
+    cdl_open = np.array([b[0] for b in cdl_bars])
+    cdl_high = np.array([b[1] for b in cdl_bars])
+    cdl_low = np.array([b[2] for b in cdl_bars])
+    cdl_close = np.array([b[3] for b in cdl_bars])
     ours = load_ours(outdir / "talib_ours.txt")
 
     # Stochastic and Williams %R run over the close series itself in this
@@ -211,7 +216,42 @@ def main():
         "macdext_macd_last": talib.MACDEXT(prices, fastperiod=12, fastmatype=2, slowperiod=26, slowmatype=2, signalperiod=9, signalmatype=2)[0][-1:],
         "macdext_signal_last": talib.MACDEXT(prices, fastperiod=12, fastmatype=2, slowperiod=26, slowmatype=2, signalperiod=9, signalmatype=2)[1][-1:],
         "macdext_histogram_last": talib.MACDEXT(prices, fastperiod=12, fastmatype=2, slowperiod=26, slowmatype=2, signalperiod=9, signalmatype=2)[2][-1:],
+        # 0.5.0: the Hilbert-transform family, MAMA/FAMA, and the 61
+        # candlestick patterns over the LCG candle fixture.
+        "ht_trendline": talib.HT_TRENDLINE(prices),
+        "ht_dcperiod": talib.HT_DCPERIOD(prices),
+        "ht_dcphase": talib.HT_DCPHASE(prices),
+        "ht_sine": talib.HT_SINE(prices)[0],
+        "ht_sine_lead": talib.HT_SINE(prices)[1],
+        "ht_phasor_inphase": talib.HT_PHASOR(prices)[0],
+        "ht_phasor_quadrature": talib.HT_PHASOR(prices)[1],
+        "ht_trendmode": talib.HT_TRENDMODE(prices),
+        "mama": talib.MAMA(prices, 0.5, 0.05)[0],
+        "fama": talib.MAMA(prices, 0.5, 0.05)[1],
     }
+
+    for cdln in [
+        "CDL2CROWS", "CDL3BLACKCROWS", "CDL3INSIDE", "CDL3LINESTRIKE",
+        "CDL3OUTSIDE", "CDL3STARSINSOUTH", "CDL3WHITESOLDIERS",
+        "CDLABANDONEDBABY", "CDLADVANCEBLOCK", "CDLBELTHOLD",
+        "CDLBREAKAWAY", "CDLCLOSINGMARUBOZU", "CDLCONCEALBABYSWALL",
+        "CDLCOUNTERATTACK", "CDLDARKCLOUDCOVER", "CDLDOJI", "CDLDOJISTAR",
+        "CDLDRAGONFLYDOJI", "CDLENGULFING", "CDLEVENINGDOJISTAR",
+        "CDLEVENINGSTAR", "CDLGAPSIDESIDEWHITE", "CDLGRAVESTONEDOJI",
+        "CDLHAMMER", "CDLHANGINGMAN", "CDLHARAMI", "CDLHARAMICROSS",
+        "CDLHIGHWAVE", "CDLHIKKAKE", "CDLHIKKAKEMOD", "CDLHOMINGPIGEON",
+        "CDLIDENTICAL3CROWS", "CDLINNECK", "CDLINVERTEDHAMMER",
+        "CDLKICKING", "CDLKICKINGBYLENGTH", "CDLLADDERBOTTOM",
+        "CDLLONGLEGGEDDOJI", "CDLLONGLINE", "CDLMARUBOZU",
+        "CDLMATCHINGLOW", "CDLMATHOLD", "CDLMORNINGDOJISTAR",
+        "CDLMORNINGSTAR", "CDLONNECK", "CDLPIERCING", "CDLRICKSHAWMAN",
+        "CDLRISEFALL3METHODS", "CDLSEPARATINGLINES", "CDLSHOOTINGSTAR",
+        "CDLSHORTLINE", "CDLSPINNINGTOP", "CDLSTALLEDPATTERN",
+        "CDLSTICKSANDWICH", "CDLTAKURI", "CDLTASUKIGAP", "CDLTHRUSTING",
+        "CDLTRISTAR", "CDLUNIQUE3RIVER", "CDLUPSIDEGAP2CROWS",
+        "CDLXSIDEGAP3METHODS",
+    ]:
+        expected[cdln] = getattr(talib, cdln)(cdl_open, cdl_high, cdl_low, cdl_close)
 
     failures = 0
     print(f"{'function':<24} {'values':>7} {'max rel err':>13}  bit-exact  note")
