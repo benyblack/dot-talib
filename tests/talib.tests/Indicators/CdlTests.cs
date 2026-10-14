@@ -110,4 +110,13 @@ public class CdlTests : CdlFixture
     Assert.Equal(Cdl.ThreeInside(Bars), result["ThreeInside"]);
     Assert.Equal(Cdl.ThreeLineStrike(Bars), result["ThreeLineStrike"]);
   }
+
+  [Fact]
+  public void Scan_scores_every_pattern_by_default()
+  {
+    var result = Cdl.Scan(Bars);
+    Assert.Equal(Cdl.PatternNames.Length, result.Count);
+    Assert.Equal(Cdl.ThreeInside(Bars), result["ThreeInside"]);
+    Assert.Equal(Cdl.XsideGap3Methods(Bars), result["XsideGap3Methods"]);
+  }
 }
