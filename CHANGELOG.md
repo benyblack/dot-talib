@@ -6,6 +6,31 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-10-14
+
+The benchmark release: the full suite mirroring the Elixir project's
+bench/ harnesses, with results documented against the C library.
+
+### Added
+
+- Three dependency-free benchmark modes in `bench/Talib.Bench`
+  mirroring the Elixir project's scripts job-for-job (same fixtures,
+  same statistics): `-- bench` (24 representative batch functions at
+  100k points, plus the shared-context `Cdl.Scan` observation),
+  `-- stream` (per-tick cost of all 14 streaming families next to the
+  per-tick recompute and the Init warm-up), and `-- panel` (the
+  16-symbol, 8-indicator concurrency panel, sequential vs
+  `Parallel.ForEach` with Server GC).
+- `bench/bench_c.py` (the same jobs through the TA-Lib Python
+  bindings, for the C reference column) and `bench/bench_panel.py`
+  (the panel sequentially / with threads / with processes — now with
+  the `__main__` guard Windows spawn requires).
+- `docs/BENCHMARKS.md`: method, the full result tables (C# at 1-8x
+  the C library on the numeric families; KAMA and CCI faster; Scan at
+  ~14x over individual pattern calls; the panel at 3.6x/4.1x), the
+  streaming table (0.01-0.13 µs per tick), the numerical-agreement
+  summary and reproduction commands.
+
 ## [0.5.0] - 2026-10-14
 
 The full-parity release: **133 of 133 TA-Lib functions**, every one

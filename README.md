@@ -143,22 +143,26 @@ rest within 1.3e-13).
 
 ## Benchmarks
 
-`bench/Talib.Bench` (BenchmarkDotNet), 100k points, .NET 10:
+Full methodology, tables and the concurrency panel live in
+[docs/BENCHMARKS.md](docs/BENCHMARKS.md) — measured against the TA-Lib
+C library on the same host (best of 5, 100k points): the single-pass
+numeric families land at 1-8x the C time (MACD, StochRSI and Aroon
+within 2%; KAMA and CCI faster than C), `Cdl.Scan` scores all 61
+patterns over one shared context at ~14x the cost of calling them
+individually, and the streaming steps cost 0.01-0.13 µs per tick —
+four to five orders of magnitude less than a per-tick recompute. The
+16-symbol concurrency panel scales 3.6x on 24 cores with a one-line
+`Parallel.ForEach`.
 
-| Batch (100k points) | Median | | Streaming (per 1000 ticks) | Median |
-|---|---:|---|---|---:|
-| SMA(20) | 215 µs | | SMA | 3.7 µs |
-| EMA(20) | 284 µs | | EMA | 3.2 µs |
-| StdDev(20) | 430 µs | | RSI | 5.2 µs |
-| RSI(14) | 596 µs | | ATR | 4.7 µs |
-| MACD line | 616 µs | | MACD | 4.2 µs |
-| Stoch slow | 1,430 µs | | | |
-| ATR(14) | 941 µs | | | |
-| BBands(20, 2) | 4,224 µs | | | |
-| Donchian(20) | 4,788 µs | | | |
+The harnesses are committed and dependency-free:
 
-Streaming steps allocate nothing; batch series allocate their output
-arrays (plus per-window records for the multi-output families).
+```
+dotnet run --project bench/Talib.Bench -c Release -- bench 100000
+dotnet run --project bench/Talib.Bench -c Release -- stream 100000
+dotnet run --project bench/Talib.Bench -c Release -- panel 16
+```
+
+(The BenchmarkDotNet micro-suite still runs with no mode argument.)
 
 ## Roadmap
 
