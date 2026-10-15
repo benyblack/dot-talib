@@ -44,9 +44,9 @@ order of magnitude.
 | `Aroon.AroonSeries` (14) | 1.377 | 0.566 | 2.4x |
 | `Cci.CciSeries` (20) | 0.957 | 0.974 | 1.0x |
 | `StochRsi.StochRsiSeries` (14, 5) | 1.305 | 1.040 | 1.3x |
-| `Cdl.Doji` | 5.601 | 0.147 | 38x |
-| `Cdl.Engulfing` | 8.396 | 0.055 | 153x |
-| `Cdl.ThreeWhiteSoldiers` | 7.200 | 0.430 | 17x |
+| `Cdl.Doji` | 1.770 | 0.147 | 12x |
+| `Cdl.Engulfing` | 5.345 | 0.055 | 97x |
+| `Cdl.ThreeWhiteSoldiers` | 4.608 | 0.430 | 11x |
 | `Ht.TrendlineSeries` | 9.153 | 3.776 | 2.4x |
 | `Ht.DcPhaseSeries` | 24.745 | 23.234 | 1.1x |
 | `Mama.MamaSeries` (0.5, 0.05) | 4.040 | 3.089 | 1.3x |
@@ -69,10 +69,27 @@ Takeaways (0.6.0, the allocation-driven performance release):
   Stochastic slow 1.9 -> 1.2 ms, and scoring all 61 patterns one by one
   1.08 s -> 0.52 s (**2x**) — every value unchanged (the full audit
   re-run passes bit for bit).
-- A single candlestick pattern still pays ~17-153x: each call builds
-  the whole candle context, which is the API's shape — `Cdl.Scan`
-  shares one context across all 61 patterns: ~74 ms for the whole set
-  at 100k bars (**~7x** the individual calls, after the 0.6.0 halving).
+- A single candlestick pattern pays ~11-97x: each call builds the
+  whole candle context, which is the API's shape — `Cdl.Scan` shares
+  one context across all 61 patterns: ~74 ms for the whole set at 100k
+  bars (~3x the individual calls, after 0.6.0/0.6.1 halved them twice;
+  Scan's own cost is the 61 per-pattern walks, not the context).
+- 0.6.1 rebuilt the CDL context build: the per-bar candle fields are
+  computed with element-wise SIMD (`Vector<double>`; every lane runs
+  the exact scalar expression, so the values are bit-identical), and
+  the four trailing sums are fused into one walk that keeps each
+  sum's exact arithmetic (no intermediate arrays, four fewer passes).
+  Single patterns 1.6-3.2x faster (Doji 5.6 -> 1.8 ms), all 61 scored
+  individually 0.52 s -> 0.24 s — all 61 patterns integer-exact
+  against the C library across three audit fixtures.
+- Why the WMA/StdDev sliding sums stay scalar, on purpose: they are
+  floating-point reductions, and SIMD reorders reductions, which
+  changes last-bit values. The batch walks must keep the exact sliding
+  arithmetic because the streaming `Init`/`Next` states replay it
+  operation for operation — the stream-equals-batch contract (exact
+  equality, per family) and the value audit both depend on that order.
+  Vectorizing the reduction would break both for a few percent of
+  time on already-cheap walks.
 - The Hilbert/MESA family lands at 1.2-2.5x — its fixed-layout state
   survives the port with nothing but the output arrays allocated.
 - Everything is linear in the input; nothing is quadratic. At typical

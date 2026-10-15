@@ -6,6 +6,36 @@ project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.6.1] - 2026-10-14
+
+The SIMD context release: the CDL context build is element-wise
+vectorized and its four trailing-sum walks fused into one — values
+bit-identical (all 269 tests pass; all 61 patterns integer-exact
+against the C library across three audit fixtures).
+
+### Changed
+
+- `Cdl`'s context build computes the per-bar candle fields with
+  `Vector<double>`: every operation is element-wise, so each lane runs
+  exactly the scalar expression — bit-identical by construction (no
+  reassociation, no fused multiply-add).
+- The four trailing sums (body/hl/shadow over 10 bars, hl over 5) are
+  fused into a single walk that keeps each sum's exact seed-then-slide
+  arithmetic, dropping the four intermediate arrays and passes.
+- The WMA/StdDev sliding sums deliberately stay scalar: they are
+  floating-point reductions, and reordering them (what SIMD does)
+  would break the stream-equals-batch contract and the value audit
+  for a few percent on already-cheap walks — documented in
+  docs/BENCHMARKS.md.
+
+### Measured (100k bars, best of runs)
+
+- `Cdl.Doji` 5.6 -> 1.8 ms (**3.2x**), `Cdl.Engulfing` 8.4 -> 5.3 ms,
+  `Cdl.ThreeWhiteSoldiers` 7.2 -> 4.6 ms.
+- Scoring all 61 patterns one by one: 0.52 s -> 0.24 s. `Cdl.Scan`
+  unchanged (~74 ms; its cost is the per-pattern walks, not the
+  context).
+
 ## [0.6.0] - 2026-10-14
 
 The performance release: the per-window heap allocations removed,
