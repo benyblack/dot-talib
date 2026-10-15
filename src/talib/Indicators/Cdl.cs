@@ -1,3 +1,5 @@
+using System.Numerics;
+
 namespace Talib.Indicators;
 
 /// <summary>
@@ -120,7 +122,52 @@ public static partial class Cdl
   private static CtxBar[] BuildContext(Bar[] bars)
   {
     var ctx = new CtxBar[bars.Length];
-    for (int i = 0; i < bars.Length; i++)
+
+    // Pass 1: the per-bar candle fields. Every operation is
+    // element-wise, so the vector lanes compute exactly the scalar
+    // expression per element — bit-identical by construction.
+    int width = Vector<double>.Count;
+    Span<double> open = stackalloc double[width];
+    Span<double> high = stackalloc double[width];
+    Span<double> low = stackalloc double[width];
+    Span<double> close = stackalloc double[width];
+    Span<double> body = stackalloc double[width];
+    Span<double> up = stackalloc double[width];
+    Span<double> lo = stackalloc double[width];
+    int i = 0;
+    for (; i + width <= bars.Length; i += width)
+    {
+      for (int j = 0; j < width; j++)
+      {
+        Bar bar = bars[i + j];
+        open[j] = bar.Open;
+        high[j] = bar.High;
+        low[j] = bar.Low;
+        close[j] = bar.Close;
+      }
+
+      var bodies = Vector.Abs(new Vector<double>(close) - new Vector<double>(open));
+      var ups = new Vector<double>(high) - Vector.Max(new Vector<double>(open), new Vector<double>(close));
+      var los = Vector.Min(new Vector<double>(open), new Vector<double>(close)) - new Vector<double>(low);
+      bodies.CopyTo(body);
+      ups.CopyTo(up);
+      los.CopyTo(lo);
+      for (int j = 0; j < width; j++)
+      {
+        ctx[i + j] = new CtxBar
+        {
+          O = open[j],
+          H = high[j],
+          L = low[j],
+          C = close[j],
+          Body = body[j],
+          Up = up[j],
+          Lo = lo[j],
+        };
+      }
+    }
+
+    for (; i < bars.Length; i++)
     {
       Bar bar = bars[i];
       ctx[i] = new CtxBar
@@ -135,53 +182,60 @@ public static partial class Cdl
       };
     }
 
-    double[] body10 = Sums(ctx, 10, b => b.Body);
-    double[] hl10 = Sums(ctx, 10, b => b.H - b.L);
-    double[] shadow10 = Sums(ctx, 10, b => b.Up + b.Lo);
-    double[] hl5 = Sums(ctx, 5, b => b.H - b.L);
-
-    for (int i = 0; i < ctx.Length; i++)
+    // Pass 2: the four trailing sums in one walk. Each running sum
+    // keeps the exact arithmetic of the standalone walk it replaces
+    // (a seed summed left to right, then `previous + (entering -
+    // leaving)` per bar), so the values are bit-identical; only the
+    // passes are fused — one walk over the context instead of four
+    // walks each allocating an intermediate values array.
+    int n = ctx.Length;
+    if (n > 5)
     {
-      ctx[i].Body10 = body10[i];
-      ctx[i].Hl10 = hl10[i];
-      ctx[i].Shadow10 = shadow10[i];
-      ctx[i].Hl5 = hl5[i];
+      double hl5 = 0;
+      for (int k = 0; k < 5; k++)
+      {
+        hl5 += ctx[k].H - ctx[k].L;
+      }
+
+      ctx[5].Hl5 = hl5;
+      for (int k = 6; k < Math.Min(11, n); k++)
+      {
+        hl5 += (ctx[k - 1].H - ctx[k - 1].L) - (ctx[k - 6].H - ctx[k - 6].L);
+        ctx[k].Hl5 = hl5;
+      }
+
+      if (n > 10)
+      {
+        double body10 = 0, hl10 = 0, shadow10 = 0;
+        for (int k = 0; k < 10; k++)
+        {
+          body10 += ctx[k].Body;
+          hl10 += ctx[k].H - ctx[k].L;
+          shadow10 += ctx[k].Up + ctx[k].Lo;
+        }
+
+        ctx[10].Body10 = body10;
+        ctx[10].Hl10 = hl10;
+        ctx[10].Shadow10 = shadow10;
+
+        for (int k = 11; k < n; k++)
+        {
+          CtxBar entering = ctx[k - 1];
+          CtxBar leaving = ctx[k - 11];
+          body10 += entering.Body - leaving.Body;
+          hl10 += (entering.H - entering.L) - (leaving.H - leaving.L);
+          shadow10 += (entering.Up + entering.Lo) - (leaving.Up + leaving.Lo);
+          ctx[k].Body10 = body10;
+          ctx[k].Hl10 = hl10;
+          ctx[k].Shadow10 = shadow10;
+
+          hl5 += (entering.H - entering.L) - (ctx[k - 6].H - ctx[k - 6].L);
+          ctx[k].Hl5 = hl5;
+        }
+      }
     }
 
     return ctx;
-  }
-
-  // sums[k] = the values summed over the n bars before k (0.0 for the
-  // first n bars — no pattern reads them, its lookback covers the
-  // warmup); after the fill the window slides by adding the entering
-  // value and subtracting the leaving one.
-  private static double[] Sums(CtxBar[] ctx, int n, Func<CtxBar, double> value)
-  {
-    var values = new double[ctx.Length];
-    for (int i = 0; i < ctx.Length; i++)
-    {
-      values[i] = value(ctx[i]);
-    }
-
-    var result = new double[ctx.Length];
-    if (ctx.Length <= n)
-    {
-      return result;
-    }
-
-    double seed = 0;
-    for (int i = 0; i < n; i++)
-    {
-      seed += values[i];
-    }
-
-    result[n] = seed;
-    for (int k = n + 1; k < values.Length; k++)
-    {
-      result[k] = result[k - 1] + (values[k - 1] - values[k - 1 - n]);
-    }
-
-    return result;
   }
 
   // ------------------------------------------------------------------
